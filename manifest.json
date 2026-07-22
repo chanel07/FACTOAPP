@@ -1,0 +1,24 @@
+{
+  "name": "Facto",
+  "short_name": "Facto",
+  "description": "Tírame un facto — lo que pasa hoy en tu zona",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#14161C",
+  "theme_color": "#14161C",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
