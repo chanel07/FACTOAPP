@@ -10,14 +10,14 @@
 <style>
   :root{
     --bg: #14161C; --card: #1D2028; --card-alt: #23262F;
-    --lima: #C6FF3D; --coral: #FF3D71; --cyan: #3DD9FF; --violeta: #9D7CFF;
+    --lima: #C6FF3D; --lima-txt: #C6FF3D; --coral: #FF3D71; --cyan: #3DD9FF; --violeta: #9D7CFF;
     --text: #F2F3F5; --text-soft: #8B8FA3; --linea: #2A2E38;
   }
   *{box-sizing:border-box;}
   body{ margin:0; min-height:100vh; background:var(--bg); font-family:'Plus Jakarta Sans', sans-serif; color:var(--text); padding-bottom:96px; }
   header{ padding:28px 20px 14px; }
   .logo-row{ display:flex; justify-content:space-between; align-items:center; }
-  .logo{ font-family:'Bungee', cursive; font-size:1.7rem; color:var(--lima); margin:0; text-shadow:0 0 18px rgba(198,255,61,0.35); }
+  .logo{ font-family:'Bungee', cursive; font-size:1.7rem; color:var(--lima-txt); margin:0; text-shadow:0 0 18px rgba(198,255,61,0.35); }
   .logo span{ color:var(--coral); text-shadow:0 0 18px rgba(255,61,113,0.35); }
   header .tagline{ color:var(--text-soft); font-size:0.82rem; margin:4px 0 16px; font-weight:600; }
   .perfil-btn{ width:38px; height:38px; border-radius:50%; background:var(--violeta); border:none; color:#fff; font-weight:800; font-size:0.95rem; cursor:pointer; position:relative; }
@@ -27,13 +27,13 @@
   body.modo-claro{
     --bg: #F4F1EA; --card: #FFFFFF; --card-alt: #EFEBE2;
     --text: #201E1B; --text-soft: #6B6459; --linea: #DDD6C8;
+    --lima-txt: #4F8A1C;
   }
   body.modo-claro .logo{ text-shadow:none; }
   body.modo-claro .logo span{ text-shadow:none; }
   body.modo-claro .card{ box-shadow:0 2px 8px rgba(0,0,0,0.06); }
   body.modo-claro .modal{ background:rgba(255,255,255,0.95); border-top:1px solid rgba(0,0,0,0.06); }
   body.modo-claro .modal-overlay{ background:rgba(0,0,0,0.3); }
-  body.modo-claro .fab, body.modo-claro .confirmar-btn.confirmado{ color:#14161C; }
   body.modo-claro .msg.msg-mio{ color:#fff; }
   body.modo-claro .bottom-nav{ box-shadow:0 -2px 8px rgba(0,0,0,0.05); }
   .zona-select{ width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--linea); font-weight:700; font-size:0.9rem; color:var(--text); background:var(--card); }
@@ -47,7 +47,7 @@
   .chip.activo[data-cat="peligro"]{ background:rgba(255,61,113,0.18); color:var(--coral); border-color:var(--coral); }
   .chip.activo[data-cat="servicios"]{ background:rgba(255,184,77,0.18); color:#FFB84D; border-color:#FFB84D; }
   .chip.activo[data-cat="vias"]{ background:rgba(61,217,255,0.18); color:var(--cyan); border-color:var(--cyan); }
-  .chip.activo[data-cat="parche"]{ background:rgba(198,255,61,0.18); color:var(--lima); border-color:var(--lima); }
+  .chip.activo[data-cat="parche"]{ background:rgba(198,255,61,0.18); color:var(--lima-txt); border-color:var(--lima-txt); }
 
   .feed{ padding:10px 20px; display:flex; flex-direction:column; gap:12px; }
   .empty-feed{ text-align:center; padding:60px 20px; color:var(--text-soft); }
@@ -63,7 +63,7 @@
   }
   @keyframes shimmer{ 100%{ left:100%; } }
 
-  .card{ background:var(--card); border-radius:16px; padding:16px 16px 14px; animation:cardIn 0.3s ease-out backwards; border-left:4px solid var(--tag-color, var(--lima)); }
+  .card{ background:var(--card); border-radius:16px; padding:16px 16px 14px; animation:cardIn 0.3s ease-out backwards; border-left:4px solid var(--tag-color, var(--lima-txt)); }
   .card.resuelto{ opacity:0.55; }
   @keyframes cardIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
   .tag.resuelto-tag{ background:rgba(139,143,163,0.2); color:var(--text-soft); }
@@ -76,7 +76,7 @@
   .tag.peligro{ background:rgba(255,61,113,0.18); color:var(--coral); }
   .tag.servicios{ background:rgba(255,184,77,0.18); color:#FFB84D; }
   .tag.vias{ background:rgba(61,217,255,0.18); color:var(--cyan); }
-  .tag.parche{ background:rgba(198,255,61,0.18); color:var(--lima); }
+  .tag.parche{ background:rgba(198,255,61,0.18); color:var(--lima-txt); }
   .card-time{ font-size:0.72rem; color:var(--text-soft); font-weight:700; white-space:nowrap; }
   .card-zona{ font-size:0.78rem; font-weight:800; color:var(--cyan); margin-bottom:5px; }
   .card-texto{ font-size:0.96rem; line-height:1.45; margin-bottom:13px; color:var(--text); }
@@ -90,7 +90,7 @@
   .opcion-reportar{ color:var(--coral); }
   .confirmar-btn:active, .chat-btn:active, .dm-btn:active, .reenviar-btn:active{ transform:scale(0.92); }
   .confirmar-btn{ background:var(--card-alt); color:var(--text-soft); }
-  .confirmar-btn.confirmado{ background:var(--lima); color:var(--bg); }
+  .confirmar-btn.confirmado{ background:var(--lima); color:#14161C; }
   .chat-btn{ background:var(--card-alt); color:var(--text-soft); }
   .dm-btn{ background:var(--violeta); color:#fff; }
   .reenviar-btn{ background:var(--card-alt); color:var(--text-soft); }
@@ -100,20 +100,20 @@
   .nav-btn{ flex:1; background:none; border:none; color:var(--text-soft); font-size:0.72rem; font-weight:700; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 0 4px; cursor:pointer; position:relative; }
   .nav-btn .nav-icon{ font-size:1.35rem; }
   .nav-sub{ font-size:0.6rem; font-weight:600; opacity:0.7; display:block; }
-  .nav-btn.activo{ color:var(--lima); }
-  .nav-btn.activo::after{ content:''; position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); width:22px; height:3px; background:var(--lima); border-radius:3px; }
+  .nav-btn.activo{ color:var(--lima-txt); }
+  .nav-btn.activo::after{ content:''; position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); width:22px; height:3px; background:var(--lima-txt); border-radius:3px; }
   .nav-badge{ position:absolute; top:0px; right:22%; background:var(--coral); color:#fff; font-size:0.6rem; font-weight:800; border-radius:10px; padding:1px 5px; min-width:15px; }
   .nav-btn.nuevo-mensaje .nav-icon{ animation:iconoBounce 0.6s ease; }
   @keyframes iconoBounce{ 0%,100%{ transform:scale(1); } 30%{ transform:scale(1.3); } 60%{ transform:scale(0.9); } }
   .punto-nuevo{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--coral); }
 
-  .fab{ position:fixed; right:20px; bottom:88px; width:58px; height:58px; border-radius:50%; background:var(--lima); color:var(--bg); border:none; font-size:1.9rem; font-weight:700; box-shadow:0 4px 16px rgba(198,255,61,0.35); cursor:pointer; z-index:9; }
+  .fab{ position:fixed; right:20px; bottom:88px; width:58px; height:58px; border-radius:50%; background:var(--lima); color:#14161C; border:none; font-size:1.9rem; font-weight:700; box-shadow:0 4px 16px rgba(198,255,61,0.35); cursor:pointer; z-index:9; }
   .fab:active{ transform:scale(0.92); }
 
   .modal-overlay{ position:fixed; inset:0; background:rgba(10,11,15,0.55); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); display:none; align-items:flex-end; z-index:10; }
   .modal-overlay.open{ display:flex; }
   .modal{ background:rgba(29,32,40,0.92); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); width:100%; border-radius:24px 24px 0 0; padding:22px 20px 28px; max-height:88vh; overflow-y:auto; border-top:1px solid rgba(255,255,255,0.08); }
-  .modal h2{ font-family:'Bungee', cursive; font-size:1.2rem; margin:0 0 16px; color:var(--lima); }
+  .modal h2{ font-family:'Bungee', cursive; font-size:1.2rem; margin:0 0 16px; color:var(--lima-txt); }
   .field{ margin-bottom:14px; }
   .field label{ display:block; font-size:0.72rem; font-weight:800; color:var(--text-soft); text-transform:uppercase; margin-bottom:6px; }
   .field input, .field select, .field textarea{ width:100%; padding:12px 14px; border-radius:10px; border:1.5px solid var(--linea); font-size:0.95rem; background:var(--card-alt); color:var(--text); font-family:'Plus Jakarta Sans', sans-serif; }
@@ -124,7 +124,7 @@
   .cat-option.peligro.selected{ border-color:var(--coral); color:var(--coral); }
   .cat-option.servicios.selected{ border-color:#FFB84D; color:#FFB84D; }
   .cat-option.vias.selected{ border-color:var(--cyan); color:var(--cyan); }
-  .cat-option.parche.selected{ border-color:var(--lima); color:var(--lima); }
+  .cat-option.parche.selected{ border-color:var(--lima-txt); color:var(--lima-txt); }
 
   .foto-picker{ display:flex; align-items:center; gap:12px; }
   .foto-btn{ background:var(--card-alt); border:1.5px dashed var(--linea); border-radius:10px; padding:14px; text-align:center; color:var(--text-soft); font-weight:700; font-size:0.85rem; cursor:pointer; flex:1; }
@@ -134,7 +134,7 @@
   .modal-actions{ display:flex; gap:10px; margin-top:8px; }
   .btn{ border:none; border-radius:12px; padding:13px 18px; font-weight:800; font-size:0.92rem; cursor:pointer; flex:1; }
   .btn-cancelar{ background:var(--card-alt); color:var(--text-soft); }
-  .btn-publicar{ background:var(--lima); color:var(--bg); }
+  .btn-publicar{ background:var(--lima); color:#14161C; }
   .btn-publicar:disabled{ opacity:0.5; }
 
   .toast{ position:fixed; top:16px; left:50%; transform:translateX(-50%); background:var(--text); color:var(--bg); padding:10px 18px; border-radius:20px; font-size:0.85rem; font-weight:700; z-index:20; opacity:0; transition:opacity 0.25s; pointer-events:none; }
@@ -177,7 +177,7 @@
   .reenvio-label{ font-size:0.68rem; font-weight:800; color:var(--violeta); margin-bottom:3px; text-transform:uppercase; }
   .chat-input-row{ display:flex; gap:8px; padding:12px 14px; background:var(--card); border-top:1px solid var(--linea); }
   .chat-input-row input{ flex:1; padding:11px 14px; border-radius:20px; border:1.5px solid var(--linea); background:var(--card-alt); color:var(--text); font-size:0.9rem; }
-  .chat-enviar{ width:42px; height:42px; border-radius:50%; border:none; background:var(--lima); color:var(--bg); font-size:1.1rem; cursor:pointer; flex-shrink:0; }
+  .chat-enviar{ width:42px; height:42px; border-radius:50%; border:none; background:var(--lima); color:#14161C; font-size:1.1rem; cursor:pointer; flex-shrink:0; }
   .mic-btn{ width:42px; height:42px; border-radius:50%; border:none; background:var(--card-alt); color:var(--text); font-size:1.1rem; cursor:pointer; flex-shrink:0; }
   .mic-btn.grabando{ background:var(--coral); animation:pulseGrabando 1s infinite; }
   @keyframes pulseGrabando{ 0%,100%{ box-shadow:0 0 0 0 rgba(255,61,113,0.5); } 50%{ box-shadow:0 0 0 8px rgba(255,61,113,0); } }
