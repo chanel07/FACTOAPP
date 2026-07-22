@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.onesignal.com/sdks/OneSignalSDK.page.js" defer></script>
 <style>
   :root{
     --bg: #14161C; --card: #1D2028; --card-alt: #23262F;
@@ -382,7 +383,13 @@ const SUPABASE_URL = 'https://nwanfvsjusdeissqjlat.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_iBkcTifMwPU2My1atR_hYQ_rKF6QPRj';
 const CLOUDINARY_CLOUD_NAME = 'dxjxiz7sp';
 const CLOUDINARY_UPLOAD_PRESET = 'FACTOAPP';
+const ONESIGNAL_APP_ID = '259985f2-a4db-4018-8733-2ddd0ef86481';
 // =============================
+
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal){
+  await OneSignal.init({ appId: ONESIGNAL_APP_ID, allowLocalhostAsSecureOrigin: true });
+});
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -507,6 +514,13 @@ async function asegurarIdentidad(){
   document.getElementById('perfil-letra').textContent = miNombre.charAt(0).toUpperCase();
   document.getElementById('perfil-inicial').style.background = colorAvatar(miNombre);
   await cargarContactos();
+
+  // Vincula este número de teléfono con OneSignal para poder enviarle notificaciones
+  OneSignalDeferred.push(function(OneSignal){
+    OneSignal.login(miTelefono);
+    OneSignal.Notifications.requestPermission();
+  });
+
   return true;
 }
 
@@ -675,10 +689,14 @@ async function enviarComentario(){
   const input = document.getElementById('chat-input');
   const texto = input.value.trim();
   if(!texto) return;
+  const facto = factos.find(f => f.id === chatAbiertoId);
   await sb.from('comentarios').insert({ facto_id: chatAbiertoId, autor: miNombre, autor_tel: miTelefono, texto });
   input.value = '';
   await renderChat();
   await cargarFactos();
+  if(facto && facto.autor_tel !== miTelefono){
+    enviarNotificacion(facto.autor_tel, miNombre + ' comentó tu facto', texto);
+  }
 }
 
 function render(){
@@ -940,6 +958,18 @@ async function renderDM(){
   cont.scrollTop = cont.scrollHeight;
 }
 
+async function enviarNotificacion(para_tel, titulo, mensaje){
+  try{
+    await fetch('/api/notificar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ para_tel, titulo, mensaje })
+    });
+  }catch(e){
+    console.log('No se pudo enviar notificación push', e);
+  }
+}
+
 async function enviarDM(){
   const input = document.getElementById('dm-input');
   const texto = input.value.trim();
@@ -947,6 +977,7 @@ async function enviarDM(){
   await sb.from('mensajes').insert({ de_tel: miTelefono, para_tel: dmActivo, texto });
   input.value = '';
   await renderDM();
+  enviarNotificacion(dmActivo, miNombre, texto);
 }
 
 // ===== REENVIAR =====
@@ -980,6 +1011,7 @@ async function reenviarA(telefono, nombre){
   await guardarContacto(telefono, nombre);
   cerrarReenviar();
   showToast('Reenviado a ' + nombre);
+  enviarNotificacion(telefono, miNombre + ' te reenvió un facto', facto.texto);
 }
 
 // ===== MENSAJES DE VOZ =====
@@ -1077,7 +1109,12 @@ async function iniciar(){
     document.getElementById('perfil-letra').textContent = miNombre.charAt(0).toUpperCase();
     document.getElementById('perfil-inicial').style.background = colorAvatar(miNombre);
   }
-  if(miTelefono){ await cargarContactos(); }
+  if(miTelefono){
+    await cargarContactos();
+    OneSignalDeferred.push(function(OneSignal){
+      OneSignal.login(miTelefono);
+    });
+  }
   actualizarRacha();
 
   await cargarFactos();
