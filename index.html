@@ -358,7 +358,7 @@ const CLOUDINARY_CLOUD_NAME = 'dxjxiz7sp';
 const CLOUDINARY_UPLOAD_PRESET = 'FACTOAPP';
 // =============================
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let factos = [];
 let categoriaActiva = 'todos';
@@ -554,7 +554,7 @@ async function publicarReporte(){
       fotoUrl = await subirFotoACloudinary(fotoSeleccionada);
     }
 
-    const { error } = await supabase.from('factos').insert({
+    const { error } = await sb.from('factos').insert({
       categoria: categoriaSeleccionada,
       zona,
       texto,
@@ -583,9 +583,9 @@ async function confirmar(id){
   const yaConfirme = facto.confirmaciones.some(c => c.telefono === miTelefono);
 
   if(yaConfirme){
-    await supabase.from('confirmaciones').delete().eq('facto_id', id).eq('telefono', miTelefono);
+    await sb.from('confirmaciones').delete().eq('facto_id', id).eq('telefono', miTelefono);
   } else {
-    await supabase.from('confirmaciones').insert({ facto_id: id, telefono: miTelefono });
+    await sb.from('confirmaciones').insert({ facto_id: id, telefono: miTelefono });
   }
   await cargarFactos();
 }
@@ -606,7 +606,7 @@ function cerrarChat(){
 }
 
 async function renderChat(){
-  const { data } = await supabase.from('comentarios').select('*').eq('facto_id', chatAbiertoId).order('created_at', { ascending:true });
+  const { data } = await sb.from('comentarios').select('*').eq('facto_id', chatAbiertoId).order('created_at', { ascending:true });
   const cont = document.getElementById('chat-mensajes');
   if(!data || data.length === 0){
     cont.innerHTML = `<div class="chat-vacio">Nadie ha comentado aún.<br>Sé el primero en preguntar o confirmar.</div>`;
@@ -626,7 +626,7 @@ async function reportarComentario(id){
   if(!(await asegurarIdentidad())) return;
   const confirmado = confirm('¿Reportar este comentario?');
   if(!confirmado) return;
-  await supabase.from('moderacion').insert({ tipo:'comentario', objetivo_id:id, reportado_por: miTelefono });
+  await sb.from('moderacion').insert({ tipo:'comentario', objetivo_id:id, reportado_por: miTelefono });
   showToast('Gracias, lo revisaremos');
 }
 
@@ -635,7 +635,7 @@ async function enviarComentario(){
   const input = document.getElementById('chat-input');
   const texto = input.value.trim();
   if(!texto) return;
-  await supabase.from('comentarios').insert({ facto_id: chatAbiertoId, autor: miNombre, autor_tel: miTelefono, texto });
+  await sb.from('comentarios').insert({ facto_id: chatAbiertoId, autor: miNombre, autor_tel: miTelefono, texto });
   input.value = '';
   await renderChat();
   await cargarFactos();
@@ -700,7 +700,7 @@ function cerrarMasOpciones(){
 }
 
 async function marcarResuelto(id, estabaResuelto){
-  await supabase.from('factos').update({ resuelto: !estabaResuelto }).eq('id', id);
+  await sb.from('factos').update({ resuelto: !estabaResuelto }).eq('id', id);
   await cargarFactos();
   showToast(estabaResuelto ? 'Marcado como activo de nuevo' : '¡Marcado como resuelto! ✅');
 }
@@ -709,20 +709,20 @@ async function reportarFacto(id){
   if(!(await asegurarIdentidad())) return;
   const confirmado = confirm('¿Reportar este facto como falso, spam u ofensivo?');
   if(!confirmado) return;
-  await supabase.from('moderacion').insert({ tipo:'facto', objetivo_id:id, reportado_por: miTelefono });
+  await sb.from('moderacion').insert({ tipo:'facto', objetivo_id:id, reportado_por: miTelefono });
   showToast('Gracias, lo revisaremos');
 }
 
 // ===== MENSAJES PRIVADOS =====
 async function cargarContactos(){
-  const { data } = await supabase.from('contactos').select('*').eq('dueno_tel', miTelefono);
+  const { data } = await sb.from('contactos').select('*').eq('dueno_tel', miTelefono);
   contactos = {};
   (data || []).forEach(c => contactos[c.contacto_tel] = c.contacto_nombre);
 }
 
 async function guardarContacto(tel, nombre){
   contactos[tel] = nombre;
-  await supabase.from('contactos').upsert({ dueno_tel: miTelefono, contacto_tel: tel, contacto_nombre: nombre }, { onConflict:'dueno_tel,contacto_tel' });
+  await sb.from('contactos').upsert({ dueno_tel: miTelefono, contacto_tel: tel, contacto_nombre: nombre }, { onConflict:'dueno_tel,contacto_tel' });
 }
 
 async function renderBandeja(){
@@ -792,9 +792,9 @@ async function iniciarNuevoDM(){
 }
 
 async function estaEnFacto(telefono){
-  const { data } = await supabase.from('factos').select('id').eq('autor_tel', telefono).limit(1);
+  const { data } = await sb.from('factos').select('id').eq('autor_tel', telefono).limit(1);
   if(data && data.length > 0) return true;
-  const { data: msgs } = await supabase.from('mensajes').select('id').or(`de_tel.eq.${telefono},para_tel.eq.${telefono}`).limit(1);
+  const { data: msgs } = await sb.from('mensajes').select('id').or(`de_tel.eq.${telefono},para_tel.eq.${telefono}`).limit(1);
   return msgs && msgs.length > 0;
 }
 
@@ -820,8 +820,8 @@ async function abrirDMporTelefono(telefono, nombre){
   document.getElementById('modal-dm').classList.add('open');
 
   const clave = [miTelefono, telefono].sort().join('_');
-  if(canalEscribiendo) supabase.removeChannel(canalEscribiendo);
-  canalEscribiendo = supabase.channel('typing_' + clave)
+  if(canalEscribiendo) sb.removeChannel(canalEscribiendo);
+  canalEscribiendo = sb.channel('typing_' + clave)
     .on('broadcast', { event:'typing' }, (payload) => {
       if(payload.payload.from !== miTelefono){ mostrarEscribiendo(); }
     })
@@ -831,7 +831,7 @@ async function abrirDMporTelefono(telefono, nombre){
 function cerrarDM(){
   document.getElementById('modal-dm').classList.remove('open');
   document.getElementById('dm-input').value = '';
-  if(canalEscribiendo){ supabase.removeChannel(canalEscribiendo); canalEscribiendo = null; }
+  if(canalEscribiendo){ sb.removeChannel(canalEscribiendo); canalEscribiendo = null; }
   dmActivo = null;
 }
 
@@ -880,7 +880,7 @@ async function renderDM(){
   // Marca como leídos los mensajes que me llegaron y aún no había visto
   const sinLeer = msgs.filter(m => m.para_tel === miTelefono && !m.leido);
   if(sinLeer.length > 0){
-    await supabase.from('mensajes').update({ leido:true }).in('id', sinLeer.map(m => m.id));
+    await sb.from('mensajes').update({ leido:true }).in('id', sinLeer.map(m => m.id));
     sinLeer.forEach(m => m.leido = true);
   }
   localStorage.setItem('facto_lastread_' + dmActivo, new Date().toISOString());
@@ -904,7 +904,7 @@ async function enviarDM(){
   const input = document.getElementById('dm-input');
   const texto = input.value.trim();
   if(!texto || !dmActivo) return;
-  await supabase.from('mensajes').insert({ de_tel: miTelefono, para_tel: dmActivo, texto });
+  await sb.from('mensajes').insert({ de_tel: miTelefono, para_tel: dmActivo, texto });
   input.value = '';
   await renderDM();
 }
@@ -936,7 +936,7 @@ function confirmarReenvioNumero(){
 async function reenviarA(telefono, nombre){
   const facto = factos.find(f => f.id === factoAReenviar);
   const resumen = `↗️ Facto reenviado:\n"${facto.texto}" — ${facto.zona} (${nombresCategoria[facto.categoria]})`;
-  await supabase.from('mensajes').insert({ de_tel: miTelefono, para_tel: telefono, texto: resumen, es_reenvio: true });
+  await sb.from('mensajes').insert({ de_tel: miTelefono, para_tel: telefono, texto: resumen, es_reenvio: true });
   await guardarContacto(telefono, nombre);
   cerrarReenviar();
   showToast('Reenviado a ' + nombre);
@@ -972,7 +972,7 @@ async function toggleGrabacion(){
       showToast('Enviando audio...');
       try{
         const url = await subirAudioACloudinary(blob);
-        await supabase.from('mensajes').insert({ de_tel: miTelefono, para_tel: dmActivo, audio_url: url });
+        await sb.from('mensajes').insert({ de_tel: miTelefono, para_tel: dmActivo, audio_url: url });
         await renderDM();
       }catch(e){
         console.error(e);
@@ -1000,7 +1000,7 @@ async function subirAudioACloudinary(blob){
 }
 // ===== BLOQUEAR =====
 async function estaBloqueado(telefono){
-  const { data } = await supabase.from('bloqueados').select('id').eq('bloqueador_tel', miTelefono).eq('bloqueado_tel', telefono).limit(1);
+  const { data } = await sb.from('bloqueados').select('id').eq('bloqueador_tel', miTelefono).eq('bloqueado_tel', telefono).limit(1);
   return data && data.length > 0;
 }
 
@@ -1016,13 +1016,13 @@ async function toggleBloqueo(){
   const bloqueadoAhora = await estaBloqueado(dmActivo);
 
   if(bloqueadoAhora){
-    await supabase.from('bloqueados').delete().eq('bloqueador_tel', miTelefono).eq('bloqueado_tel', dmActivo);
+    await sb.from('bloqueados').delete().eq('bloqueador_tel', miTelefono).eq('bloqueado_tel', dmActivo);
     actualizarUIBloqueo(false);
     showToast('Desbloqueado');
   } else {
     const confirmado = confirm(`¿Bloquear a ${dmActivoNombre}? No podrán escribirse más.`);
     if(!confirmado) return;
-    await supabase.from('bloqueados').insert({ bloqueador_tel: miTelefono, bloqueado_tel: dmActivo });
+    await sb.from('bloqueados').insert({ bloqueador_tel: miTelefono, bloqueado_tel: dmActivo });
     actualizarUIBloqueo(true);
     showToast('Bloqueado');
   }
@@ -1041,13 +1041,13 @@ async function iniciar(){
 
   await cargarFactos();
 
-  supabase.channel('factos-cambios')
+  sb.channel('factos-cambios')
     .on('postgres_changes', { event:'*', schema:'public', table:'factos' }, cargarFactos)
     .on('postgres_changes', { event:'*', schema:'public', table:'confirmaciones' }, cargarFactos)
     .on('postgres_changes', { event:'*', schema:'public', table:'comentarios' }, () => { if(chatAbiertoId) renderChat(); cargarFactos(); })
     .subscribe();
 
-  supabase.channel('mensajes-cambios')
+  sb.channel('mensajes-cambios')
     .on('postgres_changes', { event:'INSERT', schema:'public', table:'mensajes' }, (payload) => {
       const msg = payload.new;
       const esParaMi = msg.para_tel === miTelefono;
