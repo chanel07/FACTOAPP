@@ -35,7 +35,7 @@
   body.modo-claro{
     --bg: #F4F1EA; --card: #FFFFFF; --card-alt: #EFEBE2;
     --text: #201E1B; --text-soft: #6B6459; --linea: #DDD6C8;
-    --lima-txt: #4F8A1C;
+    --lima-txt: #0284C7;
   }
   body.modo-claro .logo{ text-shadow:none; }
   body.modo-claro .logo span{ text-shadow:none; }
@@ -893,7 +893,7 @@ function avisarEscribiendo(){
 }
 
 function invitarPorWhatsapp(){
-  const mensaje = `Hola! Te escribo porque quiero contarte algo por Facto, la app donde nos avisamos lo que pasa en el barrio (cortes de luz, vías, seguridad) y hablamos en privado. Pídeme el link y te lo paso 😉`;
+  const mensaje = `Hola! Te escribo porque quiero contarte algo por Facto, la app donde nos avisamos lo que pasa en el barrio (cortes de luz, vías, seguridad) y hablamos en privado. Entra aquí: https://factoapp-sigma.vercel.app 😉`;
   window.open(`https://wa.me/57${dmActivo}?text=${encodeURIComponent(mensaje)}`, '_blank');
 }
 
