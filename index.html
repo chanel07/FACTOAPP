@@ -21,7 +21,21 @@
   .logo span{ color:var(--coral); text-shadow:0 0 18px rgba(255,61,113,0.35); }
   header .tagline{ color:var(--text-soft); font-size:0.82rem; margin:4px 0 16px; font-weight:600; }
   .perfil-btn{ width:38px; height:38px; border-radius:50%; background:var(--violeta); border:none; color:#fff; font-weight:800; font-size:0.95rem; cursor:pointer; position:relative; }
+  .modo-btn{ width:38px; height:38px; border-radius:50%; background:var(--card-alt); border:none; font-size:1.1rem; cursor:pointer; }
   .racha-badge{ position:absolute; bottom:-4px; right:-4px; background:var(--bg); border-radius:10px; padding:1px 4px; font-size:0.6rem; font-weight:800; display:none; }
+
+  body.modo-claro{
+    --bg: #F4F1EA; --card: #FFFFFF; --card-alt: #EFEBE2;
+    --text: #201E1B; --text-soft: #6B6459; --linea: #DDD6C8;
+  }
+  body.modo-claro .logo{ text-shadow:none; }
+  body.modo-claro .logo span{ text-shadow:none; }
+  body.modo-claro .card{ box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+  body.modo-claro .modal{ background:rgba(255,255,255,0.95); border-top:1px solid rgba(0,0,0,0.06); }
+  body.modo-claro .modal-overlay{ background:rgba(0,0,0,0.3); }
+  body.modo-claro .fab, body.modo-claro .confirmar-btn.confirmado{ color:#14161C; }
+  body.modo-claro .msg.msg-mio{ color:#fff; }
+  body.modo-claro .bottom-nav{ box-shadow:0 -2px 8px rgba(0,0,0,0.05); }
   .zona-select{ width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--linea); font-weight:700; font-size:0.9rem; color:var(--text); background:var(--card); }
 
   .screen{ display:none; } .screen.active{ display:block; }
@@ -85,6 +99,7 @@
   .bottom-nav{ position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--linea); display:flex; padding:10px 10px calc(10px + env(safe-area-inset-bottom)); z-index:8; }
   .nav-btn{ flex:1; background:none; border:none; color:var(--text-soft); font-size:0.72rem; font-weight:700; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 0 4px; cursor:pointer; position:relative; }
   .nav-btn .nav-icon{ font-size:1.35rem; }
+  .nav-sub{ font-size:0.6rem; font-weight:600; opacity:0.7; display:block; }
   .nav-btn.activo{ color:var(--lima); }
   .nav-btn.activo::after{ content:''; position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); width:22px; height:3px; background:var(--lima); border-radius:3px; }
   .nav-badge{ position:absolute; top:0px; right:22%; background:var(--coral); color:#fff; font-size:0.6rem; font-weight:800; border-radius:10px; padding:1px 5px; min-width:15px; }
@@ -181,7 +196,10 @@
   <header>
     <div class="logo-row">
       <h1 class="logo">FAC<span>TO</span></h1>
-      <button class="perfil-btn" id="perfil-inicial"><span id="perfil-letra">?</span><span class="racha-badge" id="racha-badge"></span></button>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button class="modo-btn" id="modo-btn" onclick="toggleModo()">☀️</button>
+        <button class="perfil-btn" id="perfil-inicial"><span id="perfil-letra">?</span><span class="racha-badge" id="racha-badge"></span></button>
+      </div>
     </div>
     <p class="tagline">Tírame un facto 📲 — lo que pasa hoy en tu zona</p>
     <select class="zona-select" id="zona-select" onchange="cambiarZona()">
@@ -230,7 +248,7 @@
   <div class="bottom-nav">
     <button class="nav-btn activo" id="nav-feed" onclick="irAFeed()"><span class="nav-icon">🏠</span> Factos</button>
     <button class="nav-btn" id="nav-mensajes" onclick="irAMensajes()">
-      <span class="nav-icon">✉️</span> Mensajes
+      <span class="nav-icon">✉️</span> Tírame un facto<span class="nav-sub">(mensaje)</span>
       <span class="nav-badge" id="msgs-badge" style="display:none;">0</span>
     </button>
   </div>
@@ -266,7 +284,7 @@
         <label>Foto (opcional)</label>
         <div class="foto-picker">
           <label class="foto-btn" id="foto-btn-label">📷 Agregar foto
-            <input type="file" id="rep-foto" accept="image/*" capture="environment" style="display:none;" onchange="previsualizarFoto()">
+            <input type="file" id="rep-foto" accept="image/*" style="display:none;" onchange="previsualizarFoto()">
           </label>
           <img id="foto-preview" class="foto-preview">
           <button class="foto-quitar" id="foto-quitar" onclick="quitarFoto()">Quitar</button>
@@ -383,6 +401,20 @@ function showToast(msg){
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(()=> t.classList.remove('show'), 1800);
+}
+
+function toggleModo(){
+  const esClaro = document.body.classList.toggle('modo-claro');
+  document.getElementById('modo-btn').textContent = esClaro ? '🌙' : '☀️';
+  localStorage.setItem('facto_modo', esClaro ? 'claro' : 'oscuro');
+}
+
+function cargarModo(){
+  const modo = localStorage.getItem('facto_modo');
+  if(modo === 'claro'){
+    document.body.classList.add('modo-claro');
+    document.getElementById('modo-btn').textContent = '🌙';
+  }
 }
 
 function haceCuanto(fechaISO){
@@ -1029,6 +1061,7 @@ async function toggleBloqueo(){
 }
 
 async function iniciar(){
+  cargarModo();
   // El feed se puede ver sin registrarse — la identidad se pide solo al interactuar
   miNombre = localStorage.getItem('facto_nombre');
   miTelefono = localStorage.getItem('facto_telefono');
