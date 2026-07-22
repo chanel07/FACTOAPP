@@ -501,7 +501,7 @@ async function subirFotoACloudinary(file){
 
 // ===== FEED DE FACTOS =====
 async function cargarFactos(){
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('factos')
     .select('*, confirmaciones(telefono), comentarios(id)')
     .order('created_at', { ascending:false });
@@ -726,7 +726,7 @@ async function guardarContacto(tel, nombre){
 }
 
 async function renderBandeja(){
-  const { data } = await supabase
+  const { data } = await sb
     .from('mensajes')
     .select('*')
     .or(`de_tel.eq.${miTelefono},para_tel.eq.${miTelefono}`)
@@ -858,7 +858,7 @@ function invitarPorWhatsapp(){
 }
 
 async function renderDM(){
-  const { data } = await supabase
+  const { data } = await sb
     .from('mensajes')
     .select('*')
     .or(`and(de_tel.eq.${miTelefono},para_tel.eq.${dmActivo}),and(de_tel.eq.${dmActivo},para_tel.eq.${miTelefono})`)
