@@ -1113,6 +1113,7 @@ async function iniciar(){
     await cargarContactos();
     OneSignalDeferred.push(function(OneSignal){
       OneSignal.login(miTelefono);
+      OneSignal.Notifications.requestPermission();
     });
   }
   actualizarRacha();
