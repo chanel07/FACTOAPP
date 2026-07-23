@@ -1,4 +1,4 @@
-importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDKWorker.js');
+importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
 
 // Service worker mínimo — solo lo necesario para que Chrome/Android ofrezca "Instalar"
 self.addEventListener('install', () => self.skipWaiting());
