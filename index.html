@@ -230,7 +230,9 @@
   .cat-option.mascotas.selected{ border-color:#D2965A; color:#D2965A; }
   .cat-option.transporte.selected{ border-color:#9AA0FF; color:#9AA0FF; }
 
-  .foto-picker{ display:flex; align-items:center; gap:12px; }
+  .foto-picker{ display:flex; align-items:center; gap:12px; margin-top:8px; }
+  .foto-botones-row{ display:flex; gap:8px; }
+  .foto-botones-row .foto-btn{ flex:1; text-align:center; font-size:0.8rem; }
   .foto-btn{ background:var(--card-alt); border:1.5px dashed var(--linea); border-radius:10px; padding:14px; text-align:center; color:var(--text-soft); font-weight:700; font-size:0.85rem; cursor:pointer; flex:1; }
   .foto-preview{ width:56px; height:56px; border-radius:10px; object-fit:cover; display:none; }
   .foto-quitar{ background:none; border:none; color:var(--coral); font-weight:800; font-size:0.75rem; cursor:pointer; display:none; }
@@ -402,10 +404,15 @@
       </div>
       <div class="field">
         <label>Foto (opcional)</label>
-        <div class="foto-picker">
-          <label class="foto-btn" id="foto-btn-label">📷 Agregar foto
-            <input type="file" id="rep-foto" accept="image/*" style="display:none;" onchange="previsualizarFoto()">
+        <div class="foto-botones-row">
+          <label class="foto-btn" id="foto-btn-camara">📷 Tomar foto
+            <input type="file" id="rep-foto-camara" accept="image/*" capture="environment" style="display:none;" onchange="previsualizarFoto('rep-foto-camara')">
           </label>
+          <label class="foto-btn" id="foto-btn-galeria">🖼️ Elegir de galería
+            <input type="file" id="rep-foto-galeria" accept="image/*" style="display:none;" onchange="previsualizarFoto('rep-foto-galeria')">
+          </label>
+        </div>
+        <div class="foto-picker">
           <img id="foto-preview" class="foto-preview">
           <button class="foto-quitar" id="foto-quitar" onclick="quitarFoto()">Quitar</button>
         </div>
@@ -716,8 +723,8 @@ async function asegurarIdentidad(){
 }
 
 // ===== SUBIDA DE FOTO A CLOUDINARY =====
-async function previsualizarFoto(){
-  const input = document.getElementById('rep-foto');
+async function previsualizarFoto(idInput){
+  const input = document.getElementById(idInput);
   const file = input.files[0];
   if(!file) return;
 
@@ -819,7 +826,8 @@ async function previsualizarFoto(){
 
 function quitarFoto(){
   fotoSeleccionada = null;
-  document.getElementById('rep-foto').value = '';
+  document.getElementById('rep-foto-camara').value = '';
+  document.getElementById('rep-foto-galeria').value = '';
   document.getElementById('foto-preview').style.display = 'none';
   document.getElementById('foto-quitar').style.display = 'none';
 }
