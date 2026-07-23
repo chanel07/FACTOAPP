@@ -1358,13 +1358,19 @@ async function renderDM(){
 
 async function enviarNotificacion(para_tel, titulo, mensaje){
   try{
-    await fetch('/api/notificar', {
+    const res = await fetch('/api/notificar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ para_tel, titulo, mensaje })
     });
+    const data = await res.json().catch(() => null);
+    if(!res.ok){
+      console.error('Error del servidor al notificar (status ' + res.status + '):', data);
+    } else {
+      console.log('Notificación enviada OK:', data);
+    }
   }catch(e){
-    console.log('No se pudo enviar notificación push', e);
+    console.error('No se pudo conectar con /api/notificar:', e);
   }
 }
 
