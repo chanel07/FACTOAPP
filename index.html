@@ -538,7 +538,12 @@ const ONESIGNAL_APP_ID = '259985f2-a4db-4018-8733-2ddd0ef86481';
 
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function(OneSignal){
-  await OneSignal.init({ appId: ONESIGNAL_APP_ID, allowLocalhostAsSecureOrigin: true });
+  await OneSignal.init({
+    appId: ONESIGNAL_APP_ID,
+    allowLocalhostAsSecureOrigin: true,
+    serviceWorkerParam: { scope: '/' },
+    serviceWorkerPath: 'sw.js'
+  });
 });
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
