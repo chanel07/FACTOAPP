@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Facto">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.page.js" defer></script>
 <style>
@@ -23,10 +23,60 @@
     --text: #F2F3F5; --text-soft: #8B8FA3; --linea: #2A2E38;
   }
   *{box-sizing:border-box;}
+
+  #splash-screen{
+    position:fixed;
+    inset:0;
+    background:var(--bg);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    transition:opacity 0.5s ease, visibility 0.5s;
+  }
+  #splash-screen.oculto{
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+  }
+  .splash-contenido{
+    text-align:center;
+    animation:splashEntrada 0.6s ease-out;
+  }
+  @keyframes splashEntrada{
+    from{ opacity:0; transform:scale(0.9) translateY(10px); }
+    to{ opacity:1; transform:scale(1) translateY(0); }
+  }
+  .splash-logo{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:800;
+    font-size:1.7rem;
+    letter-spacing:-0.01em;
+    color:var(--lima);
+    margin:0;
+    text-shadow:0 0 20px rgba(198,255,61,0.4);
+    line-height:1.25;
+  }
+  .splash-logo span{ color:var(--coral); text-shadow:0 0 20px rgba(255,61,113,0.4); }
+  .splash-tagline{
+    color:var(--text-soft);
+    font-size:0.85rem;
+    margin:8px 0 28px;
+    font-weight:600;
+  }
+  .splash-spinner{
+    width:28px; height:28px;
+    border:3px solid var(--card-alt);
+    border-top-color:var(--lima);
+    border-radius:50%;
+    margin:0 auto;
+    animation:splashGiro 0.8s linear infinite;
+  }
+  @keyframes splashGiro{ to{ transform:rotate(360deg); } }
   body{ margin:0; min-height:100vh; background:var(--bg); font-family:'Plus Jakarta Sans', sans-serif; color:var(--text); padding-bottom:96px; }
   header{ padding:28px 20px 14px; }
   .logo-row{ display:flex; justify-content:space-between; align-items:center; }
-  .logo{ font-family:'Bungee', cursive; font-size:1.7rem; color:var(--lima-txt); margin:0; text-shadow:0 0 18px rgba(198,255,61,0.35); }
+  .logo{ font-family:'Baloo 2', sans-serif; font-weight:800; font-size:1.3rem; letter-spacing:-0.01em; color:var(--lima-txt); margin:0; text-shadow:0 0 14px rgba(198,255,61,0.3); line-height:1.15; }
   .logo span{ color:var(--coral); text-shadow:0 0 18px rgba(255,61,113,0.35); }
   header .tagline{ color:var(--text-soft); font-size:0.82rem; margin:4px 0 16px; font-weight:600; }
   .perfil-btn{ width:38px; height:38px; border-radius:50%; background:var(--violeta); border:none; color:#fff; font-weight:800; font-size:0.95rem; cursor:pointer; position:relative; }
@@ -46,6 +96,13 @@
   body.modo-claro .msg.msg-mio{ color:#fff; }
   body.modo-claro .bottom-nav{ box-shadow:0 -2px 8px rgba(0,0,0,0.05); }
   .zona-select{ width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--linea); font-weight:700; font-size:0.9rem; color:var(--text); background:var(--card); }
+  .zona-btn{ width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--linea); font-weight:700; font-size:0.9rem; color:var(--text); background:var(--card); display:flex; align-items:center; justify-content:space-between; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif; text-align:left; }
+  .zona-btn-flecha{ color:var(--text-soft); font-size:0.75rem; }
+  .lista-zonas{ max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; margin-bottom:8px; }
+  .zona-item{ padding:12px 14px; border-radius:10px; background:var(--card-alt); font-weight:600; font-size:0.92rem; cursor:pointer; color:var(--text); }
+  .zona-item:active{ transform:scale(0.98); }
+  .zona-item.activa{ background:rgba(198,255,61,0.15); color:var(--lima-txt); font-weight:800; }
+  .zona-vacio{ text-align:center; padding:20px; color:var(--text-soft); font-size:0.85rem; }
 
   .screen{ display:none; } .screen.active{ display:block; }
 
@@ -57,6 +114,9 @@
   .chip.activo[data-cat="servicios"]{ background:rgba(255,184,77,0.18); color:#FFB84D; border-color:#FFB84D; }
   .chip.activo[data-cat="vias"]{ background:rgba(61,217,255,0.18); color:var(--cyan); border-color:var(--cyan); }
   .chip.activo[data-cat="parche"]{ background:rgba(198,255,61,0.18); color:var(--lima-txt); border-color:var(--lima-txt); }
+  .chip.activo[data-cat="eventos"]{ background:rgba(255,105,180,0.18); color:#FF69B4; border-color:#FF69B4; }
+  .chip.activo[data-cat="mascotas"]{ background:rgba(210,150,90,0.2); color:#D2965A; border-color:#D2965A; }
+  .chip.activo[data-cat="transporte"]{ background:rgba(154,160,255,0.2); color:#9AA0FF; border-color:#9AA0FF; }
 
   .feed{ padding:10px 20px; display:flex; flex-direction:column; gap:12px; }
   .empty-feed{ text-align:center; padding:60px 20px; color:var(--text-soft); }
@@ -86,6 +146,9 @@
   .tag.servicios{ background:rgba(255,184,77,0.18); color:#FFB84D; }
   .tag.vias{ background:rgba(61,217,255,0.18); color:var(--cyan); }
   .tag.parche{ background:rgba(198,255,61,0.18); color:var(--lima-txt); }
+  .tag.eventos{ background:rgba(255,105,180,0.18); color:#FF69B4; }
+  .tag.mascotas{ background:rgba(210,150,90,0.2); color:#D2965A; }
+  .tag.transporte{ background:rgba(154,160,255,0.2); color:#9AA0FF; }
   .card-time{ font-size:0.72rem; color:var(--text-soft); font-weight:700; white-space:nowrap; }
   .card-zona{ font-size:0.78rem; font-weight:800; color:var(--cyan); margin-bottom:5px; }
   .card-texto{ font-size:0.96rem; line-height:1.45; margin-bottom:13px; color:var(--text); }
@@ -104,6 +167,8 @@
   .dm-btn{ background:var(--violeta); color:#fff; }
   .reenviar-btn{ background:var(--card-alt); color:var(--text-soft); }
   .card-autor{ font-size:0.72rem; color:var(--text-soft); font-weight:600; }
+  .card-autor-row{ display:flex; align-items:center; gap:6px; font-size:0.75rem; color:var(--text-soft); font-weight:700; }
+  .mini-avatar{ width:20px; height:20px; border-radius:50%; color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.6rem; font-weight:800; flex-shrink:0; }
 
   .bottom-nav{ position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--linea); display:flex; padding:10px 10px calc(10px + env(safe-area-inset-bottom)); z-index:8; }
   .nav-btn{ flex:1; background:none; border:none; color:var(--text-soft); font-size:0.72rem; font-weight:700; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 0 4px; cursor:pointer; position:relative; }
@@ -119,13 +184,40 @@
   .fab{ position:fixed; right:20px; bottom:88px; width:58px; height:58px; border-radius:50%; background:var(--lima); color:#14161C; border:none; font-size:1.9rem; font-weight:700; box-shadow:0 4px 16px rgba(198,255,61,0.35); cursor:pointer; z-index:9; }
   .fab:active{ transform:scale(0.92); }
 
+  .tooltip-fab{
+    position:fixed;
+    right:20px; bottom:154px;
+    background:var(--violeta);
+    color:#fff;
+    padding:10px 16px;
+    border-radius:14px;
+    font-size:0.82rem;
+    font-weight:700;
+    max-width:200px;
+    z-index:9;
+    box-shadow:0 4px 14px rgba(0,0,0,0.25);
+    animation:tooltipFlota 2s ease-in-out infinite;
+    display:none;
+  }
+  .tooltip-fab.visible{ display:block; }
+  .tooltip-flecha{
+    position:absolute;
+    bottom:-8px; right:22px;
+    width:0; height:0;
+    border-left:8px solid transparent;
+    border-right:8px solid transparent;
+    border-top:8px solid var(--violeta);
+  }
+  @keyframes tooltipFlota{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-4px); } }
+
   .modal-overlay{ position:fixed; inset:0; background:rgba(10,11,15,0.55); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); display:none; align-items:flex-end; z-index:10; }
   .modal-overlay.open{ display:flex; }
   .modal{ background:rgba(29,32,40,0.92); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); width:100%; border-radius:24px 24px 0 0; padding:22px 20px 28px; max-height:88vh; overflow-y:auto; border-top:1px solid rgba(255,255,255,0.08); }
-  .modal h2{ font-family:'Bungee', cursive; font-size:1.2rem; margin:0 0 16px; color:var(--lima-txt); }
+  .modal h2{ font-family:'Baloo 2', sans-serif; font-size:1.2rem; margin:0 0 16px; color:var(--lima-txt); }
   .field{ margin-bottom:14px; }
   .field label{ display:block; font-size:0.72rem; font-weight:800; color:var(--text-soft); text-transform:uppercase; margin-bottom:6px; }
   .field input, .field select, .field textarea{ width:100%; padding:12px 14px; border-radius:10px; border:1.5px solid var(--linea); font-size:0.95rem; background:var(--card-alt); color:var(--text); font-family:'Plus Jakarta Sans', sans-serif; }
+  .field input:focus, .field select:focus, .field textarea:focus{ outline:none; border-color:var(--lima); box-shadow:0 0 0 3px rgba(198,255,61,0.15); }
   .field textarea{ resize:none; min-height:80px; }
   .cat-picker{ display:flex; gap:8px; flex-wrap:wrap; }
   .cat-option{ padding:9px 13px; border-radius:12px; font-size:0.78rem; font-weight:800; cursor:pointer; border:1.5px solid var(--linea); opacity:0.55; background:var(--card-alt); color:var(--text-soft); }
@@ -134,11 +226,17 @@
   .cat-option.servicios.selected{ border-color:#FFB84D; color:#FFB84D; }
   .cat-option.vias.selected{ border-color:var(--cyan); color:var(--cyan); }
   .cat-option.parche.selected{ border-color:var(--lima-txt); color:var(--lima-txt); }
+  .cat-option.eventos.selected{ border-color:#FF69B4; color:#FF69B4; }
+  .cat-option.mascotas.selected{ border-color:#D2965A; color:#D2965A; }
+  .cat-option.transporte.selected{ border-color:#9AA0FF; color:#9AA0FF; }
 
   .foto-picker{ display:flex; align-items:center; gap:12px; }
   .foto-btn{ background:var(--card-alt); border:1.5px dashed var(--linea); border-radius:10px; padding:14px; text-align:center; color:var(--text-soft); font-weight:700; font-size:0.85rem; cursor:pointer; flex:1; }
   .foto-preview{ width:56px; height:56px; border-radius:10px; object-fit:cover; display:none; }
   .foto-quitar{ background:none; border:none; color:var(--coral); font-weight:800; font-size:0.75rem; cursor:pointer; display:none; }
+  .ubicacion-btn{ width:100%; background:var(--card-alt); border:1.5px dashed var(--linea); border-radius:10px; padding:12px; color:var(--text-soft); font-weight:700; font-size:0.85rem; cursor:pointer; }
+  .ubicacion-btn.capturada{ border-style:solid; border-color:var(--cyan); color:var(--cyan); }
+  .card-mapa{ display:inline-flex; align-items:center; gap:4px; font-size:0.72rem; color:var(--cyan); text-decoration:none; font-weight:700; margin-top:6px; }
 
   .modal-actions{ display:flex; gap:10px; margin-top:8px; }
   .btn{ border:none; border-radius:12px; padding:13px 18px; font-weight:800; font-size:0.92rem; cursor:pointer; flex:1; }
@@ -150,7 +248,7 @@
   .toast.show{ opacity:1; }
 
   .msgs-header{ padding:28px 20px 16px; }
-  .msgs-header h1{ font-family:'Bungee', cursive; font-size:1.4rem; color:var(--violeta); margin:0 0 4px; }
+  .msgs-header h1{ font-family:'Baloo 2', sans-serif; font-size:1.4rem; color:var(--violeta); margin:0 0 4px; }
   .msgs-header p{ color:var(--text-soft); font-size:0.82rem; margin:0; font-weight:600; }
   .nuevo-dm-row{ display:flex; gap:8px; padding:0 20px 16px; }
   .nuevo-dm-row input{ flex:1; padding:12px 14px; border-radius:12px; border:1.5px solid var(--linea); background:var(--card); color:var(--text); font-size:0.9rem; }
@@ -202,24 +300,27 @@
 </head>
 <body>
 
+  <div id="splash-screen">
+    <div class="splash-contenido">
+      <h1 class="splash-logo">TÍRAME UN <span>FACTO</span></h1>
+      <p class="splash-tagline" id="splash-tagline">Lo que pasa hoy en tu zona</p>
+      <div class="splash-spinner"></div>
+    </div>
+  </div>
+
   <header>
     <div class="logo-row">
-      <h1 class="logo">FAC<span>TO</span></h1>
+      <h1 class="logo">TÍRAME UN <span>FACTO</span></h1>
       <div style="display:flex; gap:8px; align-items:center;">
         <button class="modo-btn" id="modo-btn" onclick="toggleModo()">☀️</button>
         <button class="perfil-btn" id="perfil-inicial"><span id="perfil-letra">?</span><span class="racha-badge" id="racha-badge"></span></button>
       </div>
     </div>
-    <p class="tagline">Tírame un facto 📲 — lo que pasa hoy en tu zona</p>
-    <select class="zona-select" id="zona-select" onchange="cambiarZona()">
-      <option value="todas">Todas las zonas</option>
-      <option value="Centro Histórico">Centro Histórico</option>
-      <option value="Rodadero">Rodadero</option>
-      <option value="Taganga">Taganga</option>
-      <option value="Bastidas">Bastidas</option>
-      <option value="Mamatoco">Mamatoco</option>
-      <option value="Gaira">Gaira</option>
-    </select>
+    <p class="tagline">Lo que pasa hoy en tu zona</p>
+    <button class="zona-btn" id="zona-btn" onclick="abrirSelectorZona('filtro')">
+      <span>📍 <span id="zona-btn-texto">Toda Santa Marta</span></span>
+      <span class="zona-btn-flecha">▾</span>
+    </button>
   </header>
 
   <div class="screen active" id="screen-feed">
@@ -229,6 +330,9 @@
       <div class="chip" data-cat="servicios" onclick="filtrarCategoria('servicios')">💡 Luz / Agua</div>
       <div class="chip" data-cat="vias" onclick="filtrarCategoria('vias')">🚧 Vías</div>
       <div class="chip" data-cat="parche" onclick="filtrarCategoria('parche')">🔥 Parche</div>
+      <div class="chip" data-cat="eventos" onclick="filtrarCategoria('eventos')">🎉 Eventos</div>
+      <div class="chip" data-cat="mascotas" onclick="filtrarCategoria('mascotas')">🐶 Mascotas</div>
+      <div class="chip" data-cat="transporte" onclick="filtrarCategoria('transporte')">🚌 Transporte</div>
     </div>
     <div class="filtro-resueltos">
       <label><input type="checkbox" id="ocultar-resueltos" checked onchange="render()"> Ocultar resueltos</label>
@@ -253,9 +357,13 @@
   </div>
 
   <button class="fab" onclick="abrirModal()">+</button>
+  <div class="tooltip-fab" id="tooltip-fab">
+    👆 Toca aquí para reportar algo
+    <div class="tooltip-flecha"></div>
+  </div>
 
   <div class="bottom-nav">
-    <button class="nav-btn activo" id="nav-feed" onclick="irAFeed()"><span class="nav-icon">🏠</span> Factos</button>
+    <button class="nav-btn activo" id="nav-feed" onclick="irAFeed()"><span class="nav-icon">📍</span> Factos</button>
     <button class="nav-btn" id="nav-mensajes" onclick="irAMensajes()">
       <span class="nav-icon">✉️</span> Tírame un facto<span class="nav-sub">(mensaje)</span>
       <span class="nav-badge" id="msgs-badge" style="display:none;">0</span>
@@ -272,22 +380,25 @@
           <div class="cat-option servicios" data-cat="servicios" onclick="elegirCategoria('servicios')">💡 Luz / Agua</div>
           <div class="cat-option vias" data-cat="vias" onclick="elegirCategoria('vias')">🚧 Vías</div>
           <div class="cat-option parche" data-cat="parche" onclick="elegirCategoria('parche')">🔥 Parche</div>
+          <div class="cat-option eventos" data-cat="eventos" onclick="elegirCategoria('eventos')">🎉 Eventos</div>
+          <div class="cat-option mascotas" data-cat="mascotas" onclick="elegirCategoria('mascotas')">🐶 Mascotas</div>
+          <div class="cat-option transporte" data-cat="transporte" onclick="elegirCategoria('transporte')">🚌 Transporte</div>
         </div>
       </div>
       <div class="field">
-        <label for="rep-zona">Zona / barrio</label>
-        <select id="rep-zona">
-          <option value="Centro Histórico">Centro Histórico</option>
-          <option value="Rodadero">Rodadero</option>
-          <option value="Taganga">Taganga</option>
-          <option value="Bastidas">Bastidas</option>
-          <option value="Mamatoco">Mamatoco</option>
-          <option value="Gaira">Gaira</option>
-        </select>
+        <label>¿Dónde ocurre el facto?</label>
+        <button type="button" class="zona-btn" id="rep-zona-btn" onclick="abrirSelectorZona('publicar')">
+          <span>📍 <span id="rep-zona-texto">Selecciona el barrio</span></span>
+          <span class="zona-btn-flecha">▾</span>
+        </button>
       </div>
       <div class="field">
-        <label for="rep-texto">Tira el dato</label>
-        <textarea id="rep-texto" placeholder="Ej: Se fue la luz hace 20 minutos en toda la cuadra"></textarea>
+        <label for="rep-texto">¿Qué está pasando?</label>
+        <textarea id="rep-texto" placeholder="Ej: No hay agua desde las 8:00 a.m. en el barrio"></textarea>
+      </div>
+      <div class="field">
+        <label>Ubicación (opcional)</label>
+        <button type="button" class="ubicacion-btn" id="ubicacion-btn" onclick="capturarUbicacion()">📍 Usar mi ubicación actual</button>
       </div>
       <div class="field">
         <label>Foto (opcional)</label>
@@ -310,7 +421,7 @@
     <div class="modal modal-chat">
       <div class="chat-header">
         <div><button class="chat-cerrar" style="margin-bottom:6px;" onclick="cerrarDM()">←</button></div>
-        <div class="chat-header-texto" id="dm-nombre-header" style="font-family:'Bungee', cursive; font-size:1rem; color:var(--violeta); margin-top:0;"></div>
+        <div class="chat-header-texto" id="dm-nombre-header" style="font-family:'Baloo 2', sans-serif; font-size:1rem; color:var(--violeta); margin-top:0;"></div>
         <div class="dm-estado" id="dm-estado"></div>
         <button class="chat-cerrar" onclick="toggleBloqueo()" id="btn-bloquear" title="Bloquear">🚫</button>
         <button class="chat-cerrar" onclick="cerrarDM()">✕</button>
@@ -347,6 +458,19 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="modal-zona">
+    <div class="modal">
+      <h2 id="modal-zona-titulo">📍 Selecciona una zona</h2>
+      <div class="field">
+        <input type="text" id="buscar-zona" placeholder="🔍 Buscar barrio..." oninput="filtrarListaZonas()">
+      </div>
+      <div id="lista-zonas" class="lista-zonas"></div>
+      <div class="modal-actions">
+        <button class="btn btn-cancelar" onclick="cerrarSelectorZona()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="modal-reenviar">
     <div class="modal">
       <h2>↗️ Reenviar este facto</h2>
@@ -371,6 +495,25 @@
       <div id="opciones-lista" class="opciones-lista"></div>
       <div class="modal-actions">
         <button class="btn btn-cancelar" onclick="cerrarMasOpciones()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-registro">
+    <div class="modal">
+      <h2>👋 Bienvenido a Facto</h2>
+      <p style="color:var(--text-soft); font-size:0.85rem; margin:-10px 0 16px;">Solo lo pedimos una vez para que otros vecinos puedan identificarte y escribirte.</p>
+      <div class="field">
+        <label for="reg-nombre">👤 Tu nombre</label>
+        <input type="text" id="reg-nombre" placeholder="Ej: Jesús">
+      </div>
+      <div class="field">
+        <label for="reg-telefono">📱 Tu número de celular</label>
+        <input type="tel" id="reg-telefono" placeholder="Ej: 3001234567">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-cancelar" onclick="cancelarRegistro()">Cancelar</button>
+        <button class="btn btn-publicar" onclick="confirmarRegistro()">Continuar</button>
       </div>
     </div>
   </div>
@@ -407,9 +550,29 @@ let miTelefono = null;
 let contactos = {};
 let fotoSeleccionada = null;
 let factoAReenviar = null;
+let ubicacionCapturada = null;
 
-const nombresCategoria = { peligro:'Peligro', servicios:'Luz / Agua', vias:'Vías', parche:'Parche' };
-const colores = { peligro:'#FF3D71', servicios:'#FFB84D', vias:'#3DD9FF', parche:'#C6FF3D' };
+function capturarUbicacion(){
+  if(!navigator.geolocation){ showToast('Tu navegador no soporta ubicación'); return; }
+
+  const btn = document.getElementById('ubicacion-btn');
+  btn.textContent = '📍 Obteniendo ubicación...';
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      ubicacionCapturada = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      btn.textContent = '✅ Ubicación agregada';
+      btn.classList.add('capturada');
+    },
+    (err) => {
+      showToast('No se pudo obtener tu ubicación');
+      btn.textContent = '📍 Usar mi ubicación actual';
+    }
+  );
+}
+
+const nombresCategoria = { peligro:'Peligro', servicios:'Luz / Agua', vias:'Vías', parche:'Parche', eventos:'Eventos', mascotas:'Mascotas', transporte:'Transporte' };
+const colores = { peligro:'#FF3D71', servicios:'#FFB84D', vias:'#3DD9FF', parche:'#C6FF3D', eventos:'#FF69B4', mascotas:'#D2965A', transporte:'#9AA0FF' };
 
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -489,51 +652,169 @@ async function irAMensajes(){
   document.getElementById('nav-feed').classList.remove('activo');
   document.querySelector('.fab').style.display = 'none';
   renderBandeja();
+  empujarEstadoNavegacion();
 }
 
 // ===== IDENTIDAD (se pide solo la primera vez que alguien intenta interactuar) =====
+let resolverRegistro = null;
+
+function abrirModalRegistro(){
+  return new Promise((resolve) => {
+    resolverRegistro = resolve;
+    document.getElementById('reg-nombre').value = '';
+    document.getElementById('reg-telefono').value = '';
+    document.getElementById('modal-registro').classList.add('open');
+    document.getElementById('reg-nombre').focus();
+    empujarEstadoNavegacion();
+  });
+}
+
+function cancelarRegistro(){
+  document.getElementById('modal-registro').classList.remove('open');
+  if(resolverRegistro) resolverRegistro(false);
+}
+
+async function confirmarRegistro(){
+  const nombre = document.getElementById('reg-nombre').value.trim();
+  const tel = document.getElementById('reg-telefono').value.trim().replace(/\D/g, '');
+
+  if(!nombre){ showToast('Escribe tu nombre'); return; }
+  if(!tel){ showToast('Escribe tu número de celular'); return; }
+
+  miNombre = nombre;
+  miTelefono = tel;
+  localStorage.setItem('facto_nombre', miNombre);
+  localStorage.setItem('facto_telefono', miTelefono);
+
+  document.getElementById('perfil-letra').textContent = miNombre.charAt(0).toUpperCase();
+  document.getElementById('perfil-inicial').style.background = colorAvatar(miNombre);
+  await cargarContactos();
+
+  OneSignalDeferred.push(function(OneSignal){
+    OneSignal.login(miTelefono);
+    OneSignal.Notifications.requestPermission();
+  });
+
+  document.getElementById('modal-registro').classList.remove('open');
+  if(resolverRegistro) resolverRegistro(true);
+}
+
 async function asegurarIdentidad(){
   if(miNombre && miTelefono) return true;
 
   miNombre = localStorage.getItem('facto_nombre');
   miTelefono = localStorage.getItem('facto_telefono');
 
-  if(!miNombre){
-    miNombre = prompt('Para participar, ¿cómo te llamas?');
-    if(!miNombre){ return false; }
-    localStorage.setItem('facto_nombre', miNombre);
-  }
-  if(!miTelefono){
-    let tel = prompt('Tu número de celular (para que otros vecinos te puedan escribir):');
-    tel = (tel || '').replace(/\D/g, '');
-    if(!tel){ return false; }
-    miTelefono = tel;
-    localStorage.setItem('facto_telefono', miTelefono);
+  if(miNombre && miTelefono){
+    document.getElementById('perfil-letra').textContent = miNombre.charAt(0).toUpperCase();
+    document.getElementById('perfil-inicial').style.background = colorAvatar(miNombre);
+    await cargarContactos();
+    return true;
   }
 
-  document.getElementById('perfil-letra').textContent = miNombre.charAt(0).toUpperCase();
-  document.getElementById('perfil-inicial').style.background = colorAvatar(miNombre);
-  await cargarContactos();
-
-  // Vincula este número de teléfono con OneSignal para poder enviarle notificaciones
-  OneSignalDeferred.push(function(OneSignal){
-    OneSignal.login(miTelefono);
-    OneSignal.Notifications.requestPermission();
-  });
-
-  return true;
+  return await abrirModalRegistro();
 }
 
 // ===== SUBIDA DE FOTO A CLOUDINARY =====
-function previsualizarFoto(){
+async function previsualizarFoto(){
   const input = document.getElementById('rep-foto');
   const file = input.files[0];
   if(!file) return;
-  fotoSeleccionada = file;
-  const preview = document.getElementById('foto-preview');
-  preview.src = URL.createObjectURL(file);
-  preview.style.display = 'block';
-  document.getElementById('foto-quitar').style.display = 'inline-block';
+
+  showToast('Procesando foto...');
+
+  try{
+    // Si aún no hay ubicación capturada, la pedimos ahora automáticamente
+    let coords = ubicacionCapturada;
+    if(!coords && navigator.geolocation){
+      coords = await new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => resolve(null),
+          { timeout: 8000 }
+        );
+      });
+      if(coords){
+        ubicacionCapturada = coords;
+        document.getElementById('ubicacion-btn').textContent = '✅ Ubicación agregada';
+        document.getElementById('ubicacion-btn').classList.add('capturada');
+      }
+    }
+
+    // Dirección aproximada (barrio/calle) a partir de las coordenadas — servicio gratuito OpenStreetMap
+    let direccion = '';
+    let barrio = '';
+    if(coords){
+      try{
+        const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}&zoom=18&addressdetails=1`, {
+          headers: { 'Accept-Language': 'es' }
+        });
+        const data = await resp.json();
+        const a = data.address || {};
+        direccion = [a.road, a.house_number].filter(Boolean).join(' ');
+        barrio = a.suburb || a.neighbourhood || a.village || a.town || a.city_district || '';
+      }catch(e){ console.log('No se pudo obtener la dirección', e); }
+    }
+
+    // Dibuja la foto con los datos escritos encima (marca de agua)
+    const imgBitmap = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    const maxAncho = 1280;
+    const escala = Math.min(1, maxAncho / imgBitmap.width);
+    canvas.width = imgBitmap.width * escala;
+    canvas.height = imgBitmap.height * escala;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(imgBitmap, 0, 0, canvas.width, canvas.height);
+
+    const barraAlto = Math.max(80, canvas.height * 0.18);
+    const gradiente = ctx.createLinearGradient(0, canvas.height - barraAlto, 0, canvas.height);
+    gradiente.addColorStop(0, 'rgba(0,0,0,0)');
+    gradiente.addColorStop(1, 'rgba(0,0,0,0.78)');
+    ctx.fillStyle = gradiente;
+    ctx.fillRect(0, canvas.height - barraAlto, canvas.width, barraAlto);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.textBaseline = 'bottom';
+    const fuenteBase = Math.max(14, canvas.width * 0.026);
+    const fecha = new Date().toLocaleString('es-CO', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    let y = canvas.height - 12;
+
+    if(coords){
+      ctx.font = `${fuenteBase*0.7}px sans-serif`;
+      ctx.fillText(`${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`, 14, y);
+      y -= fuenteBase*1.15;
+    }
+    ctx.font = `${fuenteBase*0.85}px sans-serif`;
+    ctx.fillText(fecha, 14, y);
+    y -= fuenteBase*1.3;
+
+    if(barrio){
+      ctx.font = `bold ${fuenteBase}px sans-serif`;
+      ctx.fillText('📍 ' + barrio + ', Santa Marta', 14, y);
+      y -= fuenteBase*1.3;
+    }
+    if(direccion){
+      ctx.font = `${fuenteBase*0.9}px sans-serif`;
+      ctx.fillText(direccion, 14, y);
+    }
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    fotoSeleccionada = new File([blob], 'facto.jpg', { type:'image/jpeg' });
+
+    const preview = document.getElementById('foto-preview');
+    preview.src = URL.createObjectURL(blob);
+    preview.style.display = 'block';
+    document.getElementById('foto-quitar').style.display = 'inline-block';
+    showToast(coords ? 'Foto lista con ubicación' : 'Foto lista');
+  }catch(e){
+    console.error(e);
+    // Si algo falla (navegador sin soporte, permiso denegado), seguimos con la foto normal
+    fotoSeleccionada = file;
+    const preview = document.getElementById('foto-preview');
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = 'block';
+    document.getElementById('foto-quitar').style.display = 'inline-block';
+  }
 }
 
 function quitarFoto(){
@@ -564,7 +845,71 @@ async function cargarFactos(){
   render();
 }
 
-function cambiarZona(){ zonaActiva = document.getElementById('zona-select').value; render(); }
+const barriosSantaMarta = [
+  '11 de Noviembre', 'Bastidas', 'Bavaria', 'Bello Horizonte', 'Bonda',
+  'Ciudad Equidad', 'El Prado', 'El Rodadero', 'Gaira', 'La Paz',
+  'Los Almendros', 'Mamatoco', 'Manzanares', 'María Eugenia', 'Pescaíto',
+  'Pozos Colorados', 'San Jorge', 'Taganga', 'Timayuí'
+];
+
+let zonaModoSelector = 'filtro';
+let zonaPublicarSeleccionada = null;
+
+function abrirSelectorZona(modo){
+  zonaModoSelector = modo;
+  document.getElementById('modal-zona-titulo').textContent = modo === 'filtro' ? '📍 Filtrar por zona' : '📍 ¿Dónde ocurre el facto?';
+  document.getElementById('buscar-zona').value = '';
+  renderListaZonas('');
+  document.getElementById('modal-zona').classList.add('open');
+  document.getElementById('buscar-zona').focus();
+  empujarEstadoNavegacion();
+}
+
+function cerrarSelectorZona(){
+  document.getElementById('modal-zona').classList.remove('open');
+}
+
+function filtrarListaZonas(){
+  const texto = document.getElementById('buscar-zona').value;
+  renderListaZonas(texto);
+}
+
+function renderListaZonas(filtro){
+  const cont = document.getElementById('lista-zonas');
+  const filtroLower = filtro.trim().toLowerCase();
+
+  let opciones = [...barriosSantaMarta];
+  if(zonaModoSelector === 'filtro'){
+    opciones = ['Toda Santa Marta', ...opciones];
+  }
+
+  const filtradas = opciones.filter(z => z.toLowerCase().includes(filtroLower));
+
+  if(filtradas.length === 0){
+    cont.innerHTML = `<div class="zona-vacio">No se encontró ningún barrio con ese nombre.</div>`;
+    return;
+  }
+
+  const actual = zonaModoSelector === 'filtro'
+    ? (zonaActiva === 'todas' ? 'Toda Santa Marta' : zonaActiva)
+    : zonaPublicarSeleccionada;
+
+  cont.innerHTML = filtradas.map(z => `
+    <div class="zona-item ${z === actual ? 'activa' : ''}" onclick="elegirZona('${z.replace(/'/g, "\\'")}')">${z}</div>
+  `).join('');
+}
+
+function elegirZona(nombre){
+  if(zonaModoSelector === 'filtro'){
+    zonaActiva = (nombre === 'Toda Santa Marta') ? 'todas' : nombre;
+    document.getElementById('zona-btn-texto').textContent = nombre;
+    render();
+  } else {
+    zonaPublicarSeleccionada = nombre;
+    document.getElementById('rep-zona-texto').textContent = nombre;
+  }
+  cerrarSelectorZona();
+}
 
 function filtrarCategoria(cat){
   categoriaActiva = cat;
@@ -573,12 +918,34 @@ function filtrarCategoria(cat){
   render();
 }
 
+function mostrarTooltipInicial(){
+  const yaVisto = localStorage.getItem('facto_tooltip_visto');
+  if(yaVisto) return;
+
+  const tip = document.getElementById('tooltip-fab');
+  tip.classList.add('visible');
+  tip.onclick = ocultarTooltip;
+  setTimeout(ocultarTooltip, 6000);
+}
+
+function ocultarTooltip(){
+  document.getElementById('tooltip-fab').classList.remove('visible');
+  localStorage.setItem('facto_tooltip_visto', '1');
+}
+
 async function abrirModal(){
+  ocultarTooltip();
   if(!(await asegurarIdentidad())) return;
   document.getElementById('modal-reporte').classList.add('open');
   categoriaSeleccionada = null;
   quitarFoto();
+  ubicacionCapturada = null;
+  zonaPublicarSeleccionada = null;
+  document.getElementById('rep-zona-texto').textContent = 'Selecciona el barrio';
+  document.getElementById('ubicacion-btn').textContent = '📍 Usar mi ubicación actual';
+  document.getElementById('ubicacion-btn').classList.remove('capturada');
   document.querySelectorAll('.cat-option').forEach(c => c.classList.remove('selected'));
+  empujarEstadoNavegacion();
 }
 function cerrarModal(){
   document.getElementById('modal-reporte').classList.remove('open');
@@ -586,17 +953,29 @@ function cerrarModal(){
   quitarFoto();
 }
 
+const ejemplosPorCategoria = {
+  peligro: 'Ej: Accidente frente al supermercado',
+  servicios: 'Ej: No hay agua desde las 8:00 a.m. en el barrio',
+  vias: 'Ej: Hueco grande en la Carrera 5, cuidado en moto',
+  parche: 'Ej: Bazar comunitario este sábado en el parque',
+  eventos: 'Ej: Concierto gratis hoy en la plaza a las 6pm',
+  mascotas: 'Ej: Perrito perdido color café cerca del parque',
+  transporte: 'Ej: La ruta 109 no está pasando desde hace 1 hora'
+};
+
 function elegirCategoria(cat){
   categoriaSeleccionada = cat;
   document.querySelectorAll('.cat-option').forEach(c => c.classList.remove('selected'));
   document.querySelector(`.cat-option[data-cat="${cat}"]`).classList.add('selected');
+  document.getElementById('rep-texto').placeholder = ejemplosPorCategoria[cat] || '¿Qué está pasando?';
 }
 
 async function publicarReporte(){
-  const zona = document.getElementById('rep-zona').value;
+  const zona = zonaPublicarSeleccionada;
   const texto = document.getElementById('rep-texto').value.trim();
   if(!categoriaSeleccionada){ showToast('Elige una categoría'); return; }
-  if(!texto){ showToast('Tira el dato primero'); return; }
+  if(!zona){ showToast('Elige en qué barrio ocurre'); return; }
+  if(!texto){ showToast('Cuéntanos qué está pasando'); return; }
 
   const btn = document.getElementById('btn-publicar');
   btn.disabled = true;
@@ -613,6 +992,8 @@ async function publicarReporte(){
       zona,
       texto,
       foto_url: fotoUrl,
+      lat: ubicacionCapturada ? ubicacionCapturada.lat : null,
+      lng: ubicacionCapturada ? ubicacionCapturada.lng : null,
       autor: miNombre,
       autor_tel: miTelefono
     });
@@ -652,6 +1033,7 @@ function abrirChat(id){
   document.getElementById('chat-header-texto').textContent = facto.texto;
   renderChat();
   document.getElementById('modal-chat').classList.add('open');
+  empujarEstadoNavegacion();
 }
 function cerrarChat(){
   document.getElementById('modal-chat').classList.remove('open');
@@ -723,8 +1105,9 @@ function render(){
       </div>
       <div class="card-zona">📍 ${f.zona}</div>
       <div class="card-texto">${f.texto}</div>
+      ${f.lat && f.lng ? `<a class="card-mapa" href="https://www.google.com/maps?q=${f.lat},${f.lng}" target="_blank">🗺️ Ver ubicación exacta en el mapa</a>` : ''}
       <div class="card-footer">
-        <span class="card-autor">— ${f.autor}</span>
+        <span class="card-autor-row"><span class="mini-avatar" style="background:${colorAvatar(f.autor)};">${f.autor.charAt(0).toUpperCase()}</span>${f.autor}</span>
         <div style="display:flex; gap:6px; align-items:center;">
           <button class="confirmar-btn ${yoConfirme ? 'confirmado' : ''}" onclick="confirmar('${f.id}')">✋ ${f.confirmaciones.length}</button>
           <button class="chat-btn" onclick="abrirChat('${f.id}')">💬 ${f.comentarios.length}</button>
@@ -752,6 +1135,7 @@ function abrirMasOpciones(id){
 
   cont.innerHTML = botones;
   document.getElementById('modal-mas-opciones').classList.add('open');
+  empujarEstadoNavegacion();
 }
 function cerrarMasOpciones(){
   document.getElementById('modal-mas-opciones').classList.remove('open');
@@ -876,6 +1260,7 @@ async function abrirDMporTelefono(telefono, nombre){
 
   await renderDM();
   document.getElementById('modal-dm').classList.add('open');
+  empujarEstadoNavegacion();
 
   const clave = [miTelefono, telefono].sort().join('_');
   if(canalEscribiendo) sb.removeChannel(canalEscribiendo);
@@ -994,6 +1379,7 @@ async function abrirReenviar(id){
         </div>`).join('');
   document.getElementById('reenviar-numero').value = '';
   document.getElementById('modal-reenviar').classList.add('open');
+  empujarEstadoNavegacion();
 }
 function cerrarReenviar(){
   document.getElementById('modal-reenviar').classList.remove('open');
@@ -1100,8 +1486,63 @@ async function toggleBloqueo(){
   }
 }
 
+const frasesSplash = [
+  'Buscando los últimos factos...',
+  'Cargando tu zona...',
+  'Reuniendo lo que pasa cerca de ti...',
+  'Conectando con Santa Marta...'
+];
+
+function mostrarFraseSplashAleatoria(){
+  const frase = frasesSplash[Math.floor(Math.random() * frasesSplash.length)];
+  document.getElementById('splash-tagline').textContent = frase;
+}
+
+// ===== BOTÓN ATRÁS DE ANDROID (evita salir accidentalmente de la app) =====
+function empujarEstadoNavegacion(){
+  history.pushState({ facto: true }, '', location.href);
+}
+
+let ultimoBackEnRaiz = 0;
+
+window.addEventListener('popstate', function(){
+  const modalesEnOrden = [
+    { id:'modal-registro', cerrar: cancelarRegistro },
+    { id:'modal-mas-opciones', cerrar: cerrarMasOpciones },
+    { id:'modal-zona', cerrar: cerrarSelectorZona },
+    { id:'modal-reenviar', cerrar: cerrarReenviar },
+    { id:'modal-dm', cerrar: cerrarDM },
+    { id:'modal-chat', cerrar: cerrarChat },
+    { id:'modal-reporte', cerrar: cerrarModal }
+  ];
+
+  for(const m of modalesEnOrden){
+    if(document.getElementById(m.id).classList.contains('open')){
+      m.cerrar();
+      empujarEstadoNavegacion();
+      return;
+    }
+  }
+
+  if(document.getElementById('screen-mensajes').classList.contains('active')){
+    irAFeed();
+    empujarEstadoNavegacion();
+    return;
+  }
+
+  // Estamos en la pantalla principal: pedimos confirmar con un segundo toque
+  const ahora = Date.now();
+  if(ahora - ultimoBackEnRaiz < 2000){
+    return; // segunda vez en menos de 2 seg: dejamos que salga de verdad
+  }
+  ultimoBackEnRaiz = ahora;
+  showToast('Toca atrás de nuevo para salir');
+  empujarEstadoNavegacion();
+});
+
 async function iniciar(){
   cargarModo();
+  mostrarFraseSplashAleatoria();
   // El feed se puede ver sin registrarse — la identidad se pide solo al interactuar
   miNombre = localStorage.getItem('facto_nombre');
   miTelefono = localStorage.getItem('facto_telefono');
@@ -1117,8 +1558,17 @@ async function iniciar(){
     });
   }
   actualizarRacha();
+  mostrarTooltipInicial();
 
+  const inicioCarga = Date.now();
   await cargarFactos();
+
+  // Aseguramos que el splash se vea al menos 900ms, para que no sea un parpadeo
+  const tiempoTranscurrido = Date.now() - inicioCarga;
+  const espera = Math.max(0, 900 - tiempoTranscurrido);
+  setTimeout(() => {
+    document.getElementById('splash-screen').classList.add('oculto');
+  }, espera);
 
   sb.channel('factos-cambios')
     .on('postgres_changes', { event:'*', schema:'public', table:'factos' }, cargarFactos)
@@ -1147,6 +1597,7 @@ async function iniciar(){
     .subscribe();
 }
 iniciar();
+empujarEstadoNavegacion();
 
 document.getElementById('perfil-inicial').addEventListener('click', asegurarIdentidad);
 
