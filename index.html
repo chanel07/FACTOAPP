@@ -134,6 +134,7 @@
 
   .card{ background:var(--card); border-radius:16px; padding:16px 16px 14px; animation:cardIn 0.3s ease-out backwards; border-left:4px solid var(--tag-color, var(--lima-txt)); }
   .card.resuelto{ opacity:0.55; }
+  .aviso-oculto{ background:rgba(255,61,113,0.15); color:var(--coral); font-size:0.78rem; font-weight:700; padding:10px 12px; border-radius:10px; margin-bottom:10px; }
   @keyframes cardIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
   .tag.resuelto-tag{ background:rgba(139,143,163,0.2); color:var(--text-soft); }
   .reportar-btn{ border:none; background:transparent; color:var(--text-soft); font-size:0.85rem; cursor:pointer; padding:6px; opacity:0.6; }
@@ -315,6 +316,8 @@
   .chat-enviar{ width:42px; height:42px; border-radius:50%; border:none; background:var(--lima); color:#14161C; font-size:1.1rem; cursor:pointer; flex-shrink:0; }
   .mic-btn{ width:42px; height:42px; border-radius:50%; border:none; background:var(--card-alt); color:var(--text); font-size:1.1rem; cursor:pointer; flex-shrink:0; }
   .mic-btn.grabando{ background:var(--coral); animation:pulseGrabando 1s infinite; }
+  .grabacion-timer{ font-family:'Plus Jakarta Sans', monospace; font-weight:800; font-size:0.85rem; color:var(--coral); min-width:34px; text-align:center; display:none; }
+  .grabacion-timer.visible{ display:inline-block; }
   @keyframes pulseGrabando{ 0%,100%{ box-shadow:0 0 0 0 rgba(255,61,113,0.5); } 50%{ box-shadow:0 0 0 8px rgba(255,61,113,0); } }
   .audio-msg{ display:flex; align-items:center; gap:8px; }
   .audio-msg audio{ height:32px; max-width:180px; }
@@ -475,6 +478,7 @@
       </div>
       <div class="chat-input-row" id="dm-input-row">
         <input type="text" id="dm-input" placeholder="Escribe un mensaje privado...">
+        <span class="grabacion-timer" id="grabacion-timer"></span>
         <button class="mic-btn" id="mic-btn" onclick="toggleGrabacion()">🎤</button>
         <button class="chat-enviar" onclick="enviarDM()">➤</button>
       </div>
@@ -878,6 +882,9 @@ async function subirFotoACloudinary(file){
 }
 
 // ===== FEED DE FACTOS =====
+const UMBRAL_REPORTES = 3;
+let reportesPorFacto = {};
+
 async function cargarFactos(){
   const { data, error } = await sb
     .from('factos')
@@ -885,6 +892,13 @@ async function cargarFactos(){
     .order('created_at', { ascending:false });
 
   if(!error){ factos = data; }
+
+  const { data: reportes } = await sb.from('moderacion').select('objetivo_id').eq('tipo', 'facto');
+  reportesPorFacto = {};
+  (reportes || []).forEach(r => {
+    reportesPorFacto[r.objetivo_id] = (reportesPorFacto[r.objetivo_id] || 0) + 1;
+  });
+
   render();
 }
 
@@ -1146,6 +1160,12 @@ function render(){
   const ocultarResueltos = document.getElementById('ocultar-resueltos').checked;
   if(ocultarResueltos){ lista = lista.filter(f => !f.resuelto); }
 
+  // Los factos con muchos reportes se ocultan para todos menos para su autor
+  lista = lista.filter(f => {
+    const numReportes = reportesPorFacto[f.id] || 0;
+    return numReportes < UMBRAL_REPORTES || f.autor_tel === miTelefono;
+  });
+
   if(lista.length === 0){
     feed.innerHTML = `<div class="empty-feed"><span class="emoji">🌴</span><p>Nadie ha tirado facto aquí todavía.<br>Sé el primero.</p></div>`;
     return;
@@ -1153,8 +1173,11 @@ function render(){
 
   feed.innerHTML = lista.map((f, idx) => {
     const yoConfirme = f.confirmaciones.some(c => c.telefono === miTelefono);
+    const numReportes = reportesPorFacto[f.id] || 0;
+    const ocultoPorReportes = numReportes >= UMBRAL_REPORTES && f.autor_tel === miTelefono;
     return `
     <div class="card ${f.resuelto ? 'resuelto' : ''}" style="--tag-color:${colores[f.categoria]}; animation-delay:${idx*0.04}s">
+      ${ocultoPorReportes ? `<div class="aviso-oculto">⚠️ Este facto fue reportado varias veces y solo tú lo ves ahora — el resto de la comunidad ya no lo ve en su feed.</div>` : ''}
       ${f.foto_url ? `<img src="${f.foto_url}" class="card-foto">` : ''}
       <div class="card-top">
         <span class="tag ${f.resuelto ? 'resuelto-tag' : f.categoria}">${f.resuelto ? '✅ Resuelto' : nombresCategoria[f.categoria]}</span>
@@ -1209,6 +1232,7 @@ async function reportarFacto(id){
   const confirmado = confirm('¿Reportar este facto como falso, spam u ofensivo?');
   if(!confirmado) return;
   await sb.from('moderacion').insert({ tipo:'facto', objetivo_id:id, reportado_por: miTelefono });
+  await cargarFactos();
   showToast('Gracias, lo revisaremos');
 }
 
@@ -1469,6 +1493,16 @@ let grabadora = null;
 let trozosAudio = [];
 let grabando = false;
 
+let intervaloGrabacion = null;
+let inicioGrabacion = 0;
+
+function actualizarCronometro(){
+  const segundos = Math.floor((Date.now() - inicioGrabacion) / 1000);
+  const min = Math.floor(segundos / 60);
+  const seg = segundos % 60;
+  document.getElementById('grabacion-timer').textContent = `${min}:${seg.toString().padStart(2, '0')}`;
+}
+
 async function toggleGrabacion(){
   if(!(await asegurarIdentidad())) return;
 
@@ -1486,7 +1520,13 @@ async function toggleGrabacion(){
     grabadora.onstop = async () => {
       grabando = false;
       document.getElementById('mic-btn').classList.remove('grabando');
+      document.getElementById('grabacion-timer').classList.remove('visible');
+      clearInterval(intervaloGrabacion);
       stream.getTracks().forEach(t => t.stop());
+
+      const inputDM = document.getElementById('dm-input');
+      inputDM.disabled = false;
+      inputDM.placeholder = 'Escribe un mensaje privado...';
 
       const blob = new Blob(trozosAudio, { type:'audio/webm' });
       if(blob.size < 500){ showToast('Grabación muy corta'); return; }
@@ -1505,7 +1545,14 @@ async function toggleGrabacion(){
     grabadora.start();
     grabando = true;
     document.getElementById('mic-btn').classList.add('grabando');
-    showToast('🎤 Grabando... toca de nuevo para enviar');
+    inicioGrabacion = Date.now();
+    document.getElementById('grabacion-timer').textContent = '0:00';
+    document.getElementById('grabacion-timer').classList.add('visible');
+    intervaloGrabacion = setInterval(actualizarCronometro, 500);
+
+    const inputDM = document.getElementById('dm-input');
+    inputDM.disabled = true;
+    inputDM.placeholder = '🎙️ Grabando facto... toca 🎤 para enviar';
   }catch(e){
     showToast('No se pudo acceder al micrófono');
   }
