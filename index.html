@@ -172,6 +172,32 @@
 
   .bottom-nav{ position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--linea); display:flex; padding:10px 10px calc(10px + env(safe-area-inset-bottom)); z-index:8; }
   .nav-btn{ flex:1; background:none; border:none; color:var(--text-soft); font-size:0.72rem; font-weight:700; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 0 4px; cursor:pointer; position:relative; }
+  .nav-tooltip{
+    position:absolute;
+    bottom:100%;
+    left:50%;
+    transform:translateX(-50%);
+    margin-bottom:10px;
+    background:var(--violeta);
+    color:#fff;
+    padding:8px 12px;
+    border-radius:10px;
+    font-size:0.7rem;
+    font-weight:700;
+    white-space:nowrap;
+    display:none;
+    box-shadow:0 4px 12px rgba(0,0,0,0.25);
+  }
+  .nav-tooltip.visible{ display:block; animation:tooltipFlota 2s ease-in-out infinite; }
+  .nav-tooltip::after{
+    content:'';
+    position:absolute;
+    top:100%; left:50%;
+    transform:translateX(-50%);
+    border-left:6px solid transparent;
+    border-right:6px solid transparent;
+    border-top:6px solid var(--violeta);
+  }
   .nav-btn .nav-icon{ font-size:1.35rem; }
   .nav-sub{ font-size:0.6rem; font-weight:600; opacity:0.7; display:block; }
   .nav-btn.activo{ color:var(--lima-txt); }
@@ -365,9 +391,13 @@
   </div>
 
   <div class="bottom-nav">
-    <button class="nav-btn activo" id="nav-feed" onclick="irAFeed()"><span class="nav-icon">📍</span> Factos</button>
+    <button class="nav-btn activo" id="nav-feed" onclick="irAFeed()">
+      <div class="nav-tooltip" id="nav-tooltip-feed">Aquí ves los factos de tu zona</div>
+      <span class="nav-icon">📍</span> Factos
+    </button>
     <button class="nav-btn" id="nav-mensajes" onclick="irAMensajes()">
-      <span class="nav-icon">✉️</span> Tírame un facto<span class="nav-sub">(mensaje)</span>
+      <div class="nav-tooltip" id="nav-tooltip-mensajes">Chatea en privado con vecinos</div>
+      <span class="nav-icon">💬</span> Tírame un facto<span class="nav-sub">(mensaje)</span>
       <span class="nav-badge" id="msgs-badge" style="display:none;">0</span>
     </button>
   </div>
@@ -430,7 +460,7 @@
         <div><button class="chat-cerrar" style="margin-bottom:6px;" onclick="cerrarDM()">←</button></div>
         <div class="chat-header-texto" id="dm-nombre-header" style="font-family:'Baloo 2', sans-serif; font-size:1rem; color:var(--violeta); margin-top:0;"></div>
         <div class="dm-estado" id="dm-estado"></div>
-        <button class="chat-cerrar" onclick="toggleBloqueo()" id="btn-bloquear" title="Bloquear">🚫</button>
+        <button class="chat-cerrar" onclick="abrirOpcionesDM()" id="btn-bloquear" title="Opciones">⋮</button>
         <button class="chat-cerrar" onclick="cerrarDM()">✕</button>
       </div>
       <div class="invite-banner" id="invite-banner" style="display:none;">
@@ -931,6 +961,20 @@ function filtrarCategoria(cat){
   render();
 }
 
+function mostrarTooltipsNavegacion(){
+  const yaVistos = localStorage.getItem('facto_tooltips_nav_vistos');
+  if(yaVistos) return;
+
+  document.getElementById('nav-tooltip-feed').classList.add('visible');
+  document.getElementById('nav-tooltip-mensajes').classList.add('visible');
+
+  setTimeout(() => {
+    document.getElementById('nav-tooltip-feed').classList.remove('visible');
+    document.getElementById('nav-tooltip-mensajes').classList.remove('visible');
+    localStorage.setItem('facto_tooltips_nav_vistos', '1');
+  }, 4000);
+}
+
 function mostrarTooltipInicial(){
   const yaVisto = localStorage.getItem('facto_tooltip_visto');
   if(yaVisto) return;
@@ -1266,6 +1310,7 @@ async function abrirDMporTelefono(telefono, nombre){
   document.getElementById('dm-nombre-header').textContent = nombre;
 
   const bloqueado = await estaBloqueado(telefono);
+  bloqueadoActual = bloqueado;
   actualizarUIBloqueo(bloqueado);
 
   const conoce = await estaEnFacto(telefono);
@@ -1485,8 +1530,35 @@ function actualizarUIBloqueo(bloqueado){
   document.getElementById('bloqueado-aviso').style.display = bloqueado ? 'block' : 'none';
   document.getElementById('dm-input-row').style.display = bloqueado ? 'none' : 'flex';
   document.getElementById('dm-mensajes').style.display = bloqueado ? 'none' : 'flex';
-  document.getElementById('btn-bloquear').textContent = bloqueado ? '✅' : '🚫';
-  document.getElementById('btn-bloquear').title = bloqueado ? 'Desbloquear' : 'Bloquear';
+}
+
+function abrirOpcionesDM(){
+  abrirMasOpcionesGenerico([
+    { texto: bloqueadoActual ? '✅ Desbloquear' : '🚫 Bloquear', accion: toggleBloqueo },
+    { texto: '🚩 Reportar conversación', accion: () => reportarConversacionDM() }
+  ]);
+}
+
+let bloqueadoActual = false;
+
+function abrirMasOpcionesGenerico(opciones){
+  const cont = document.getElementById('opciones-lista');
+  cont.innerHTML = opciones.map((op, i) => `<button class="opcion-item" onclick="ejecutarOpcionGenerica(${i})">${op.texto}</button>`).join('');
+  window._opcionesGenericasActuales = opciones;
+  document.getElementById('modal-mas-opciones').classList.add('open');
+  empujarEstadoNavegacion();
+}
+
+function ejecutarOpcionGenerica(i){
+  cerrarMasOpciones();
+  window._opcionesGenericasActuales[i].accion();
+}
+
+async function reportarConversacionDM(){
+  if(!(await asegurarIdentidad())) return;
+  const confirmado = confirm('¿Reportar esta conversación como spam o inapropiada?');
+  if(!confirmado) return;
+  showToast('Gracias, lo revisaremos');
 }
 
 async function toggleBloqueo(){
@@ -1494,12 +1566,14 @@ async function toggleBloqueo(){
 
   if(bloqueadoAhora){
     await sb.from('bloqueados').delete().eq('bloqueador_tel', miTelefono).eq('bloqueado_tel', dmActivo);
+    bloqueadoActual = false;
     actualizarUIBloqueo(false);
     showToast('Desbloqueado');
   } else {
     const confirmado = confirm(`¿Bloquear a ${dmActivoNombre}? No podrán escribirse más.`);
     if(!confirmado) return;
     await sb.from('bloqueados').insert({ bloqueador_tel: miTelefono, bloqueado_tel: dmActivo });
+    bloqueadoActual = true;
     actualizarUIBloqueo(true);
     showToast('Bloqueado');
   }
@@ -1578,6 +1652,7 @@ async function iniciar(){
   }
   actualizarRacha();
   mostrarTooltipInicial();
+  mostrarTooltipsNavegacion();
 
   const inicioCarga = Date.now();
   await cargarFactos();
