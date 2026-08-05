@@ -121,7 +121,7 @@
   .feed{ padding:10px 20px; display:flex; flex-direction:column; gap:12px; }
   .empty-feed{ text-align:center; padding:60px 20px; color:var(--text-soft); }
   .empty-feed .emoji{ font-size:2.4rem; display:block; margin-bottom:10px; }
-  .empty-feed .morro{ width:110px; height:auto; display:block; margin:0 auto 14px; }
+  .empty-feed .morro{ width:120px; height:auto; display:block; margin:0 auto 16px; filter:drop-shadow(0 4px 14px rgba(0,0,0,0.25)); }
   .empty-feed p{ font-weight:700; font-size:1.05rem; margin:0; color:var(--text); }
 
   .skeleton-card{ background:var(--card); border-radius:16px; padding:16px; height:110px; position:relative; overflow:hidden; }
@@ -1188,14 +1188,29 @@ function render(){
 
   if(lista.length === 0){
     feed.innerHTML = `<div class="empty-feed">
-      <svg class="morro" viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <circle cx="97" cy="16" r="8" fill="#FFB84D" opacity="0.9"/>
-        <path d="M14 52 Q34 14 60 16 Q90 18 104 52 Z" fill="#6B7185"/>
-        <path d="M30 52 Q44 30 60 30 Q80 30 92 52 Z" fill="#575D70"/>
-        <rect x="56" y="6" width="7" height="13" rx="1.5" fill="#F2F3F5"/>
-        <rect x="54.5" y="3" width="10" height="4" rx="2" fill="#FF3D71"/>
-        <path d="M0 54 Q15 50 30 54 T60 54 T90 54 T120 54 L120 70 L0 70 Z" fill="#3DD9FF" opacity="0.55"/>
-        <path d="M0 58 Q15 54 30 58 T60 58 T90 58 T120 58" fill="none" stroke="#3DD9FF" stroke-width="2" opacity="0.8"/>
+      <svg class="morro" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <clipPath id="morroClip"><circle cx="60" cy="60" r="53"/></clipPath>
+          <linearGradient id="cieloMorro" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#FFD84D"/>
+            <stop offset="1" stop-color="#F2BE24"/>
+          </linearGradient>
+        </defs>
+        <g clip-path="url(#morroClip)">
+          <rect x="0" y="0" width="120" height="120" fill="url(#cieloMorro)"/>
+          <circle cx="90" cy="42" r="10" fill="#FFF6D8"/>
+          <path d="M76 24 q3.5 -3.5 7 0 q-3.5 -1.8 -7 0 Z M86 18 q3 -3 6 0 q-3 -1.5 -6 0 Z" fill="#1C2B45"/>
+          <rect x="0" y="74" width="120" height="46" fill="#2FB9C9"/>
+          <path d="M10 88 Q34 78 60 85 Q42 97 24 96 Q13 94 10 88 Z" fill="#F4E9C8"/>
+          <path d="M4 76 L16 58 Q28 42 40 37 L48 33 L58 34 Q76 40 88 54 Q97 63 102 74 L60 74 Q30 75 4 76 Z" fill="#1C2B45"/>
+          <path d="M26 56 L36 49 L33 58 Z M58 46 L67 43 L65 51 Z M44 62 L54 58 L51 66 Z" fill="#31405C"/>
+          <rect x="45" y="25" width="14" height="9" fill="#F7F5EE"/>
+          <rect x="49.5" y="18" width="5" height="8" fill="#F7F5EE"/>
+          <path d="M48 18 L52 13.5 L56 18 Z" fill="#F7F5EE"/>
+          <rect x="51.4" y="9" width="1.2" height="6" fill="#1C2B45"/>
+          <path d="M68 96 q5 -2.5 10 0 M82 104 q5 -2.5 10 0 M40 104 q5 -2.5 10 0" stroke="#BDEFF4" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </g>
+        <circle cx="60" cy="60" r="53" fill="none" stroke="#1C2B45" stroke-width="5"/>
       </svg>
       <p>Nadie ha tirado facto aquí todavía.<br>Sé el primero.</p></div>`;
     return;
