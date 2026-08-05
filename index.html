@@ -73,7 +73,7 @@
     animation:splashGiro 0.8s linear infinite;
   }
   @keyframes splashGiro{ to{ transform:rotate(360deg); } }
-  body{ margin:0; min-height:100vh; background:var(--bg); font-family:'Plus Jakarta Sans', sans-serif; color:var(--text); padding-bottom:96px; }
+  body{ margin:0; min-height:100vh; background:var(--bg); font-family:'Plus Jakarta Sans', sans-serif; color:var(--text); padding-bottom:170px; }
   header{ padding:28px 20px 14px; }
   .logo-row{ display:flex; justify-content:space-between; align-items:center; }
   .logo{ font-family:'Baloo 2', sans-serif; font-weight:800; font-size:1.3rem; letter-spacing:-0.01em; color:var(--lima-txt); margin:0; text-shadow:0 0 14px rgba(198,255,61,0.3); line-height:1.15; }
@@ -140,7 +140,7 @@
   .reportar-btn{ border:none; background:transparent; color:var(--text-soft); font-size:0.85rem; cursor:pointer; padding:6px; opacity:0.6; }
   .filtro-resueltos{ padding:0 20px 8px; display:flex; justify-content:flex-end; }
   .filtro-resueltos label{ font-size:0.76rem; color:var(--text-soft); font-weight:700; display:flex; align-items:center; gap:6px; }
-  .card-foto{ width:100%; border-radius:10px; margin-bottom:10px; max-height:220px; object-fit:cover; }
+  .card-foto{ width:100%; border-radius:10px; margin-bottom:10px; max-height:420px; object-fit:contain; background:var(--card-alt); cursor:pointer; }
   .card-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px; }
   .tag{ font-size:0.66rem; font-weight:800; padding:4px 11px; border-radius:12px; text-transform:uppercase; letter-spacing:0.03em; }
   .tag.peligro{ background:rgba(255,61,113,0.18); color:var(--coral); }
@@ -1091,9 +1091,8 @@ async function publicarReporte(){
     showToast('¡Facto tirado! 🔥');
   }catch(e){
     console.error(e);
-    const detalle = e && (e.message || e.error_description || e.hint || e.code) || 'desconocido';
-    showToast('Error al publicar: ' + detalle);
-    alert('Detalle del error (para diagnóstico):\n' + JSON.stringify(e, Object.getOwnPropertyNames(e || {}), 2));
+    const detalle = e && (e.message || e.error_description || e.hint || e.code) || '';
+    showToast('No se pudo publicar' + (detalle ? ': ' + detalle : ', intenta de nuevo'));
   }finally{
     btn.disabled = false;
     btn.textContent = 'Tirar facto';
@@ -1195,7 +1194,7 @@ function render(){
     return `
     <div class="card ${f.resuelto ? 'resuelto' : ''}" style="--tag-color:${colores[f.categoria]}; animation-delay:${idx*0.04}s">
       ${ocultoPorReportes ? `<div class="aviso-oculto">⚠️ Este facto fue reportado varias veces y solo tú lo ves ahora — el resto de la comunidad ya no lo ve en su feed.</div>` : ''}
-      ${f.foto_url ? `<img src="${escapeHTML(f.foto_url)}" class="card-foto">` : ''}
+      ${f.foto_url ? `<img src="${escapeHTML(f.foto_url)}" class="card-foto" onclick="window.open(this.src, '_blank')">` : ''}
       <div class="card-top">
         <span class="tag ${f.resuelto ? 'resuelto-tag' : f.categoria}">${f.resuelto ? '✅ Resuelto' : nombresCategoria[f.categoria]}</span>
         <span class="card-time">${haceCuanto(f.created_at)}</span>
