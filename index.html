@@ -121,6 +121,7 @@
   .feed{ padding:10px 20px; display:flex; flex-direction:column; gap:12px; }
   .empty-feed{ text-align:center; padding:60px 20px; color:var(--text-soft); }
   .empty-feed .emoji{ font-size:2.4rem; display:block; margin-bottom:10px; }
+  .empty-feed .morro{ width:110px; height:auto; display:block; margin:0 auto 14px; }
   .empty-feed p{ font-weight:700; font-size:1.05rem; margin:0; color:var(--text); }
 
   .skeleton-card{ background:var(--card); border-radius:16px; padding:16px; height:110px; position:relative; overflow:hidden; }
@@ -918,10 +919,13 @@ async function cargarFactos(){
 }
 
 const barriosSantaMarta = [
-  '11 de Noviembre', 'Bastidas', 'Bavaria', 'Bello Horizonte', 'Bonda',
-  'Ciudad Equidad', 'El Prado', 'El Rodadero', 'Gaira', 'La Paz',
-  'Los Almendros', 'Mamatoco', 'Manzanares', 'María Eugenia', 'Pescaíto',
-  'Pozos Colorados', 'San Jorge', 'Taganga', 'Timayuí'
+  '11 de Noviembre', '20 de Julio', 'Bastidas', 'Bavaria', 'Bello Horizonte', 'Bonda',
+  'Centro Histórico', 'Chimila', 'Cristo Rey', 'Ciudad Equidad', 'Curinca',
+  'Divino Niño', 'El Pando', 'El Prado', 'El Rodadero', 'El Yucal', 'Gaira',
+  'Galicia', 'Juan XXIII', 'La Concepción', 'La Esperanza', 'La Paz',
+  'Las Malvinas', 'Las Vegas', 'Los Almendros', 'Los Cocos', 'Mamatoco',
+  'Manzanares', 'María Eugenia', 'Nacho Vives', 'Ondas del Caribe', 'Pescaíto',
+  'Pozos Colorados', 'San Fernando', 'San Jorge', 'San Martín', 'Taganga', 'Timayuí'
 ];
 
 let zonaModoSelector = 'filtro';
@@ -1183,7 +1187,17 @@ function render(){
   });
 
   if(lista.length === 0){
-    feed.innerHTML = `<div class="empty-feed"><span class="emoji">🌴</span><p>Nadie ha tirado facto aquí todavía.<br>Sé el primero.</p></div>`;
+    feed.innerHTML = `<div class="empty-feed">
+      <svg class="morro" viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="97" cy="16" r="8" fill="#FFB84D" opacity="0.9"/>
+        <path d="M14 52 Q34 14 60 16 Q90 18 104 52 Z" fill="#6B7185"/>
+        <path d="M30 52 Q44 30 60 30 Q80 30 92 52 Z" fill="#575D70"/>
+        <rect x="56" y="6" width="7" height="13" rx="1.5" fill="#F2F3F5"/>
+        <rect x="54.5" y="3" width="10" height="4" rx="2" fill="#FF3D71"/>
+        <path d="M0 54 Q15 50 30 54 T60 54 T90 54 T120 54 L120 70 L0 70 Z" fill="#3DD9FF" opacity="0.55"/>
+        <path d="M0 58 Q15 54 30 58 T60 58 T90 58 T120 58" fill="none" stroke="#3DD9FF" stroke-width="2" opacity="0.8"/>
+      </svg>
+      <p>Nadie ha tirado facto aquí todavía.<br>Sé el primero.</p></div>`;
     return;
   }
 
