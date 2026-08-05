@@ -133,7 +133,7 @@
   @keyframes shimmer{ 100%{ left:100%; } }
 
   .card{ background:var(--card); border-radius:16px; padding:16px 16px 14px; animation:cardIn 0.3s ease-out backwards; border-left:4px solid var(--tag-color, var(--lima-txt)); }
-  .card.resuelto{ opacity:0.55; }
+  .card.resuelto{ opacity:0.5; filter:grayscale(0.7); }
   .aviso-oculto{ background:rgba(255,61,113,0.15); color:var(--coral); font-size:0.78rem; font-weight:700; padding:10px 12px; border-radius:10px; margin-bottom:10px; }
   @keyframes cardIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
   .tag.resuelto-tag{ background:rgba(139,143,163,0.2); color:var(--text-soft); }
@@ -366,7 +366,7 @@
       <div class="chip" data-cat="transporte" onclick="filtrarCategoria('transporte')">🚌 Transporte</div>
     </div>
     <div class="filtro-resueltos">
-      <label><input type="checkbox" id="ocultar-resueltos" checked onchange="render()"> Ocultar resueltos</label>
+      <label><input type="checkbox" id="ocultar-resueltos" onchange="render()"> Ocultar resueltos</label>
     </div>
     <div class="feed" id="feed">
       <div class="skeleton-card"></div>
@@ -597,6 +597,21 @@ let contactos = {};
 let fotoSeleccionada = null;
 let factoAReenviar = null;
 let ubicacionCapturada = null;
+
+// ===== SEGURIDAD: escape de contenido escrito por usuarios =====
+// Todo texto que venga de la base de datos (factos, comentarios, mensajes, nombres)
+// pasa por aquí antes de insertarse en el HTML, para que nadie pueda inyectar código.
+function escapeHTML(v){
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+// Para textos que van dentro de comillas simples en un onclick (nombres, teléfonos)
+function jsStr(v){
+  return String(v ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+// Combinación segura para atributos onclick: primero escape de JS, luego de HTML
+function attrJs(v){
+  return escapeHTML(jsStr(v));
+}
 
 function capturarUbicacion(){
   if(!navigator.geolocation){ showToast('Tu navegador no soporta ubicación'); return; }
@@ -952,7 +967,7 @@ function renderListaZonas(filtro){
     : zonaPublicarSeleccionada;
 
   cont.innerHTML = filtradas.map(z => `
-    <div class="zona-item ${z === actual ? 'activa' : ''}" onclick="elegirZona('${z.replace(/'/g, "\\'")}')">${z}</div>
+    <div class="zona-item ${z === actual ? 'activa' : ''}" onclick="elegirZona('${attrJs(z)}')">${escapeHTML(z)}</div>
   `).join('');
 }
 
@@ -1121,9 +1136,9 @@ async function renderChat(){
   }
   cont.innerHTML = data.map(c => `
     <div class="msg ${c.autor_tel === miTelefono ? 'msg-mio' : ''}">
-      <div class="msg-autor">${c.autor}</div>
-      <div class="msg-texto">${c.texto}</div>
-      <div class="msg-hora">${haceCuanto(c.created_at)} ${c.autor_tel !== miTelefono ? `· <span style="cursor:pointer;" onclick="reportarComentario('${c.id}')">🚩</span>` : ''}</div>
+      <div class="msg-autor">${escapeHTML(c.autor)}</div>
+      <div class="msg-texto">${escapeHTML(c.texto)}</div>
+      <div class="msg-hora">${haceCuanto(c.created_at)} ${c.autor_tel !== miTelefono ? `· <span style="cursor:pointer;" onclick="reportarComentario('${attrJs(c.id)}')">🚩</span>` : ''}</div>
     </div>
   `).join('');
   cont.scrollTop = cont.scrollHeight;
@@ -1178,20 +1193,20 @@ function render(){
     return `
     <div class="card ${f.resuelto ? 'resuelto' : ''}" style="--tag-color:${colores[f.categoria]}; animation-delay:${idx*0.04}s">
       ${ocultoPorReportes ? `<div class="aviso-oculto">⚠️ Este facto fue reportado varias veces y solo tú lo ves ahora — el resto de la comunidad ya no lo ve en su feed.</div>` : ''}
-      ${f.foto_url ? `<img src="${f.foto_url}" class="card-foto">` : ''}
+      ${f.foto_url ? `<img src="${escapeHTML(f.foto_url)}" class="card-foto">` : ''}
       <div class="card-top">
         <span class="tag ${f.resuelto ? 'resuelto-tag' : f.categoria}">${f.resuelto ? '✅ Resuelto' : nombresCategoria[f.categoria]}</span>
         <span class="card-time">${haceCuanto(f.created_at)}</span>
       </div>
-      <div class="card-zona">📍 ${f.zona}</div>
-      <div class="card-texto">${f.texto}</div>
-      ${f.lat && f.lng ? `<a class="card-mapa" href="https://www.google.com/maps?q=${f.lat},${f.lng}" target="_blank">🗺️ Ver ubicación exacta en el mapa</a>` : ''}
+      <div class="card-zona">📍 ${escapeHTML(f.zona)}</div>
+      <div class="card-texto">${escapeHTML(f.texto)}</div>
+      ${f.lat && f.lng ? `<a class="card-mapa" href="https://www.google.com/maps?q=${Number(f.lat)},${Number(f.lng)}" target="_blank">🗺️ Ver ubicación exacta en el mapa</a>` : ''}
       <div class="card-footer">
-        <span class="card-autor-row"><span class="mini-avatar" style="background:${colorAvatar(f.autor)};">${f.autor.charAt(0).toUpperCase()}</span>${f.autor}</span>
+        <span class="card-autor-row"><span class="mini-avatar" style="background:${colorAvatar(f.autor)};">${escapeHTML(f.autor.charAt(0).toUpperCase())}</span>${escapeHTML(f.autor)}</span>
         <div style="display:flex; gap:6px; align-items:center;">
-          <button class="confirmar-btn ${yoConfirme ? 'confirmado' : ''}" onclick="confirmar('${f.id}')">✋ ${f.confirmaciones.length}</button>
-          <button class="chat-btn" onclick="abrirChat('${f.id}')">💬 ${f.comentarios.length}</button>
-          <button class="mas-btn" onclick="abrirMasOpciones('${f.id}')">⋮</button>
+          <button class="confirmar-btn ${yoConfirme ? 'confirmado' : ''}" onclick="confirmar('${attrJs(f.id)}')">✋ ${f.confirmaciones.length}</button>
+          <button class="chat-btn" onclick="abrirChat('${attrJs(f.id)}')">💬 ${f.comentarios.length}</button>
+          <button class="mas-btn" onclick="abrirMasOpciones('${attrJs(f.id)}')">⋮</button>
         </div>
       </div>
     </div>
@@ -1205,13 +1220,13 @@ function abrirMasOpciones(id){
 
   let botones = '';
   if(!esMio){
-    botones += `<button class="opcion-item" onclick="cerrarMasOpciones(); abrirDMDesdeCard('${facto.autor_tel}', '${facto.autor}')">✉️ Escribirle en privado</button>`;
+    botones += `<button class="opcion-item" onclick="cerrarMasOpciones(); abrirDMDesdeCard('${attrJs(facto.autor_tel)}', '${attrJs(facto.autor)}')">✉️ Escribirle en privado</button>`;
   }
-  botones += `<button class="opcion-item" onclick="cerrarMasOpciones(); abrirReenviar('${facto.id}')">↗️ Reenviar a un contacto</button>`;
+  botones += `<button class="opcion-item" onclick="cerrarMasOpciones(); abrirReenviar('${attrJs(facto.id)}')">↗️ Reenviar a un contacto</button>`;
   if(esMio){
-    botones += `<button class="opcion-item" onclick="cerrarMasOpciones(); marcarResuelto('${facto.id}', ${facto.resuelto})">${facto.resuelto ? '↩️ Marcar como activo' : '✅ Marcar como resuelto'}</button>`;
+    botones += `<button class="opcion-item" onclick="cerrarMasOpciones(); marcarResuelto('${attrJs(facto.id)}', ${facto.resuelto ? 'true' : 'false'})">${facto.resuelto ? '↩️ Marcar como activo' : '✅ Marcar como resuelto'}</button>`;
   }
-  botones += `<button class="opcion-item opcion-reportar" onclick="cerrarMasOpciones(); reportarFacto('${facto.id}')">🚩 Reportar</button>`;
+  botones += `<button class="opcion-item opcion-reportar" onclick="cerrarMasOpciones(); reportarFacto('${attrJs(facto.id)}')">🚩 Reportar</button>`;
 
   cont.innerHTML = botones;
   document.getElementById('modal-mas-opciones').classList.add('open');
@@ -1281,11 +1296,11 @@ async function renderBandeja(){
     if(noLeido) conversacionesNoLeidas++;
 
     return `
-      <div class="conv-item" onclick="abrirDMporTelefono('${tel}', '${nombre}')">
-        <div class="conv-avatar" style="background:${colorAvatar(nombre)};">${nombre.charAt(0).toUpperCase()}</div>
+      <div class="conv-item" onclick="abrirDMporTelefono('${attrJs(tel)}', '${attrJs(nombre)}')">
+        <div class="conv-avatar" style="background:${colorAvatar(nombre)};">${escapeHTML(nombre.charAt(0).toUpperCase())}</div>
         <div class="conv-info">
-          <div class="conv-nombre">${nombre} ${noLeido ? '<span class="punto-nuevo"></span>' : ''}</div>
-          <div class="conv-ultimo" style="${noLeido ? 'color:var(--text); font-weight:700;' : ''}">${ultimo.audio_url ? '🎤 Mensaje de voz' : ultimo.texto}</div>
+          <div class="conv-nombre">${escapeHTML(nombre)} ${noLeido ? '<span class="punto-nuevo"></span>' : ''}</div>
+          <div class="conv-ultimo" style="${noLeido ? 'color:var(--text); font-weight:700;' : ''}">${ultimo.audio_url ? '🎤 Mensaje de voz' : escapeHTML(ultimo.texto)}</div>
         </div>
       </div>
     `;
@@ -1411,14 +1426,14 @@ async function renderDM(){
   localStorage.setItem('facto_lastread_' + dmActivo, new Date().toISOString());
 
   if(msgs.length === 0){
-    cont.innerHTML = `<div class="chat-vacio">Este es el inicio de tu conversación con ${dmActivoNombre}.</div>`;
+    cont.innerHTML = `<div class="chat-vacio">Este es el inicio de tu conversación con ${escapeHTML(dmActivoNombre)}.</div>`;
     return;
   }
 
   cont.innerHTML = msgs.map(m => `
     <div class="msg ${m.de_tel === miTelefono ? 'msg-mio' : ''} ${m.es_reenvio ? 'msg-reenvio' : ''}">
       ${m.es_reenvio ? '<div class="reenvio-label">↗️ Reenviado</div>' : ''}
-      ${m.audio_url ? `<div class="audio-msg">🎤 <audio controls src="${m.audio_url}"></audio></div>` : `<div class="msg-texto">${m.texto}</div>`}
+      ${m.audio_url ? `<div class="audio-msg">🎤 <audio controls src="${escapeHTML(m.audio_url)}"></audio></div>` : `<div class="msg-texto">${escapeHTML(m.texto)}</div>`}
       <div class="msg-hora">${haceCuanto(m.created_at)} ${m.de_tel === miTelefono ? (m.leido ? '<span style="color:#3DD9FF;">✓✓</span>' : '✓') : ''}</div>
     </div>
   `).join('');
@@ -1462,8 +1477,8 @@ async function abrirReenviar(id){
   cont.innerHTML = telefonos.length === 0
     ? `<div class="sin-contactos">Aún no tienes contactos guardados. Escribe un número abajo.</div>`
     : telefonos.map(tel => `
-        <div class="contacto-reenviar-item" onclick="reenviarA('${tel}', '${contactos[tel]}')">
-          <div class="conv-avatar" style="background:${colorAvatar(contactos[tel])};">${contactos[tel].charAt(0).toUpperCase()}</div><span>${contactos[tel]}</span>
+        <div class="contacto-reenviar-item" onclick="reenviarA('${attrJs(tel)}', '${attrJs(contactos[tel])}')">
+          <div class="conv-avatar" style="background:${colorAvatar(contactos[tel])};">${escapeHTML(contactos[tel].charAt(0).toUpperCase())}</div><span>${escapeHTML(contactos[tel])}</span>
         </div>`).join('');
   document.getElementById('reenviar-numero').value = '';
   document.getElementById('modal-reenviar').classList.add('open');
