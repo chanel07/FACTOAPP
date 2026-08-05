@@ -1091,7 +1091,9 @@ async function publicarReporte(){
     showToast('¡Facto tirado! 🔥');
   }catch(e){
     console.error(e);
-    showToast('No se pudo publicar, intenta de nuevo');
+    const detalle = e && (e.message || e.error_description || e.hint || e.code) || 'desconocido';
+    showToast('Error al publicar: ' + detalle);
+    alert('Detalle del error (para diagnóstico):\n' + JSON.stringify(e, Object.getOwnPropertyNames(e || {}), 2));
   }finally{
     btn.disabled = false;
     btn.textContent = 'Tirar facto';
