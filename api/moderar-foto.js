@@ -46,7 +46,15 @@ La imagen SÍ es apta (apta: true) si muestra situaciones normales de barrio aun
               { inline_data: { mime_type: mime, data: base64 } }
             ]
           }],
-          generationConfig: { temperature: 0 }
+          generationConfig: { temperature: 0 },
+          // Para moderación necesitamos que Gemini analice la imagen en vez de
+          // negarse a responder; el veredicto lo da nuestro prompt, no su filtro interno
+          safetySettings: [
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' }
+          ]
         })
       }
     );
@@ -60,6 +68,20 @@ La imagen SÍ es apta (apta: true) si muestra situaciones normales de barrio aun
     }
 
     const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    // Si Gemini se negó a responder por sus filtros de seguridad, ese silencio
+    // es en sí mismo el veredicto: la imagen es inapropiada
+    const bloqueadoPorSeguridad =
+      data?.promptFeedback?.blockReason ||
+      data?.candidates?.[0]?.finishReason === 'SAFETY' ||
+      data?.candidates?.[0]?.finishReason === 'IMAGE_SAFETY' ||
+      (!texto && data?.candidates !== undefined);
+
+    if (bloqueadoPorSeguridad && !texto) {
+      console.log('Gemini bloqueó la imagen por seguridad -> rechazada');
+      return res.status(200).json({ apta: false, razon: 'contenido inapropiado detectado' });
+    }
+
     const limpio = texto.replace(/```json|```/g, '').trim();
 
     let veredicto;
@@ -67,7 +89,8 @@ La imagen SÍ es apta (apta: true) si muestra situaciones normales de barrio aun
       veredicto = JSON.parse(limpio);
     } catch (e) {
       console.error('Gemini no respondió JSON válido:', texto);
-      return res.status(200).json({ apta: true, razon: 'respuesta no interpretable' });
+      // Respondió algo pero no en formato JSON: por precaución, rechazamos
+      return res.status(200).json({ apta: false, razon: 'no se pudo verificar la foto' });
     }
 
     return res.status(200).json({
