@@ -139,6 +139,12 @@
   .empty-feed p{ font-weight:700; font-size:1.05rem; margin:0; color:var(--text); }
   .nota-otros-barrios{ background:var(--card); border-left:4px solid var(--lima-txt); border-radius:14px; padding:14px 16px; margin-bottom:14px; font-size:0.9rem; line-height:1.5; color:var(--text-soft); }
   .nota-otros-barrios strong{ color:var(--text); }
+  .sello-confirmado{ display:inline-flex; align-items:center; gap:4px; background:rgba(198,255,61,0.16); color:var(--lima-txt); font-size:0.66rem; font-weight:800; padding:4px 9px; border-radius:12px; text-transform:uppercase; letter-spacing:0.02em; }
+  .punto-activo{ display:inline-block; width:7px; height:7px; border-radius:50%; background:#2ecc71; margin-right:4px; animation:latido 1.6s ease-in-out infinite; vertical-align:middle; }
+  @keyframes latido{ 0%,100%{ box-shadow:0 0 0 0 rgba(46,204,113,0.6); } 50%{ box-shadow:0 0 0 5px rgba(46,204,113,0); } }
+  .banner-impacto{ background:linear-gradient(135deg, rgba(198,255,61,0.12), rgba(61,217,255,0.10)); border:1px solid var(--linea); border-radius:14px; padding:12px 16px; margin:0 20px 4px; display:flex; align-items:center; gap:10px; font-size:0.84rem; font-weight:700; color:var(--text); }
+  .banner-impacto .bi-emoji{ font-size:1.2rem; }
+  .banner-impacto b{ color:var(--lima-txt); }
 
   .skeleton-card{ background:var(--card); border-radius:16px; padding:16px; height:110px; position:relative; overflow:hidden; }
   .skeleton-card::after{
@@ -392,6 +398,7 @@
     <div class="filtro-resueltos">
       <label><input type="checkbox" id="ocultar-resueltos" onchange="render()"> Ocultar resueltos</label>
     </div>
+    <div id="banner-impacto-cont"></div>
     <div class="feed" id="feed">
       <div class="skeleton-card"></div>
       <div class="skeleton-card"></div>
@@ -938,6 +945,7 @@ async function subirFotoACloudinary(file){
 
 // ===== FEED DE FACTOS =====
 const UMBRAL_REPORTES = 3;
+const UMBRAL_CONFIRMADO = 3; // confirmaciones para el sello "Confirmado por el barrio"
 let reportesPorFacto = {};
 
 async function cargarFactos(){
@@ -1244,6 +1252,7 @@ async function enviarComentario(){
 }
 
 function render(){
+  renderBannerImpacto();
   const feed = document.getElementById('feed');
   let lista = factos.filter(f => categoriaActiva === 'todos' || f.categoria === categoriaActiva);
   lista = lista.filter(f => zonaActiva === 'todas' || f.zona === zonaActiva);
@@ -1256,6 +1265,20 @@ function render(){
     const numReportes = reportesPorFacto[f.id] || 0;
     return numReportes < UMBRAL_REPORTES || f.autor_tel === miTelefono;
   });
+
+  // Orden inteligente: lo urgente y vigente sube. Puntúa cada facto por
+  // categoría (peligro/servicios pesan más), frescura y confirmaciones.
+  const ahora = Date.now();
+  const pesoCategoria = { peligro:100, servicios:70, vias:55, transporte:50, mascotas:40, eventos:35, parche:30 };
+  function puntaje(f){
+    if(f.resuelto) return -1000 + (new Date(f.created_at).getTime()/1e10); // resueltos al fondo
+    const horas = (ahora - new Date(f.created_at).getTime()) / 3600000;
+    const frescura = Math.max(0, 60 - horas);          // pierde fuerza con las horas
+    const cat = pesoCategoria[f.categoria] || 30;
+    const apoyo = (f.confirmaciones.length || 0) * 8;   // confirmaciones lo empujan
+    return cat + frescura + apoyo;
+  }
+  lista.sort((a,b) => puntaje(b) - puntaje(a));
 
   // Si se abrió la app desde un link de facto compartido, ese va de primero
   if(factoDestacadoId){
@@ -1321,19 +1344,46 @@ function render(){
   feed.innerHTML = lista.map((f, idx) => tarjetaFacto(f, idx)).join('');
 }
 
+function renderBannerImpacto(){
+  const cont = document.getElementById('banner-impacto-cont');
+  if(!cont) return;
+
+  const haceUnaSemana = Date.now() - 7*24*60*60*1000;
+  const enZona = f => zonaActiva === 'todas' || f.zona === zonaActiva;
+  const delaSemana = factos.filter(f => enZona(f) && new Date(f.created_at).getTime() >= haceUnaSemana);
+
+  const total = delaSemana.length;
+  const resueltos = delaSemana.filter(f => f.resuelto).length;
+
+  // Solo mostramos el banner cuando hay suficiente actividad para que sume,
+  // no cuando está casi vacío (ahí jugaría en contra).
+  if(total < 4){ cont.innerHTML = ''; return; }
+
+  const dondeTxt = zonaActiva === 'todas' ? 'el barrio' : escapeHTML(zonaActiva);
+  const resueltoTxt = resueltos > 0 ? ` y resolvió <b>${resueltos}</b>` : '';
+  cont.innerHTML = `<div class="banner-impacto">
+    <span class="bi-emoji">📊</span>
+    <span>Esta semana ${dondeTxt} reportó <b>${total}</b> facto${total===1?'':'s'}${resueltoTxt}.</span>
+  </div>`;
+}
+
 function tarjetaFacto(f, idx){
   const yoConfirme = f.confirmaciones.some(c => c.telefono === miTelefono);
   const numReportes = reportesPorFacto[f.id] || 0;
   const ocultoPorReportes = numReportes >= UMBRAL_REPORTES && f.autor_tel === miTelefono;
   const esDestacado = f.id === factoDestacadoId;
+  const confirmado = f.confirmaciones.length >= UMBRAL_CONFIRMADO && !f.resuelto;
+  const minutosDesde = Math.floor((Date.now() - new Date(f.created_at)) / 60000);
+  const activo = minutosDesde < 60 && !f.resuelto;
   return `
     <div class="card ${f.resuelto ? 'resuelto' : ''} ${esDestacado ? 'destacado' : ''}" style="--tag-color:${colores[f.categoria]}; animation-delay:${idx*0.04}s">
       ${esDestacado ? `<div class="banner-destacado">🔗 Este es el facto que te compartieron</div>` : ''}      ${ocultoPorReportes ? `<div class="aviso-oculto">⚠️ Este facto fue reportado varias veces y solo tú lo ves ahora — el resto de la comunidad ya no lo ve en su feed.</div>` : ''}
       ${f.foto_url ? `<img src="${escapeHTML(f.foto_url)}" class="card-foto" onclick="window.open(this.src, '_blank')">` : ''}
       <div class="card-top">
         <span class="tag ${f.resuelto ? 'resuelto-tag' : f.categoria}">${f.resuelto ? '✅ Resuelto' : nombresCategoria[f.categoria]}</span>
-        <span class="card-time">${haceCuanto(f.created_at)}</span>
+        <span class="card-time">${activo ? '<span class="punto-activo"></span>' : ''}${haceCuanto(f.created_at)}</span>
       </div>
+      ${confirmado ? `<div style="margin-bottom:7px;"><span class="sello-confirmado">✓ Confirmado por el barrio</span></div>` : ''}
       <div class="card-zona">📍 ${escapeHTML(f.zona)}</div>
       <div class="card-texto">${escapeHTML(f.texto)}</div>
       ${f.lat && f.lng ? `<a class="card-mapa" href="https://www.google.com/maps?q=${Number(f.lat)},${Number(f.lng)}" target="_blank">🗺️ Ver ubicación exacta en el mapa</a>` : ''}
@@ -1921,6 +1971,14 @@ async function iniciar(){
       if(estoyEnMensajes) renderBandeja();
     })
     .subscribe();
+
+  // Refresco ligero cada minuto: actualiza los "hace X min" y el punto verde
+  // de actividad sin ir a la base de datos, solo re-dibujando con lo que ya hay.
+  setInterval(() => {
+    if(document.getElementById('screen-feed').classList.contains('active') && factos.length){
+      render();
+    }
+  }, 60000);
 }
 iniciar();
 empujarEstadoNavegacion();
