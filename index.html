@@ -1541,10 +1541,20 @@ async function enviarNotificacion(para_tel, titulo, mensaje){
   }
 }
 
+// El bloqueo funciona en ambos sentidos: si el otro me bloqueó, yo tampoco puedo escribirle
+async function elOtroMeBloqueo(telefono){
+  const { data } = await sb.from('bloqueados').select('id').eq('bloqueador_tel', telefono).eq('bloqueado_tel', miTelefono).limit(1);
+  return data && data.length > 0;
+}
+
 async function enviarDM(){
   const input = document.getElementById('dm-input');
   const texto = input.value.trim();
   if(!texto || !dmActivo) return;
+  if(await elOtroMeBloqueo(dmActivo)){
+    showToast('No puedes enviarle mensajes a esta persona');
+    return;
+  }
   await sb.from('mensajes').insert({ de_tel: miTelefono, para_tel: dmActivo, texto });
   input.value = '';
   await renderDM();
@@ -1631,6 +1641,10 @@ async function toggleGrabacion(){
 
       showToast('Enviando audio...');
       try{
+        if(await elOtroMeBloqueo(dmActivo)){
+          showToast('No puedes enviarle mensajes a esta persona');
+          return;
+        }
         const url = await subirAudioACloudinary(blob);
         await sb.from('mensajes').insert({ de_tel: miTelefono, para_tel: dmActivo, audio_url: url });
         await renderDM();
@@ -1703,6 +1717,11 @@ async function reportarConversacionDM(){
   if(!(await asegurarIdentidad())) return;
   const confirmado = confirm('¿Reportar esta conversación como spam o inapropiada?');
   if(!confirmado) return;
+  const { error } = await sb.from('reportes_conversacion').insert({
+    reportado_tel: dmActivo,
+    reportado_por: miTelefono
+  });
+  if(error){ console.error('No se pudo guardar el reporte', error); }
   showToast('Gracias, lo revisaremos');
 }
 
