@@ -4,6 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Facto</title>
+<meta name="description" content="Lo que pasa hoy en tu barrio: cortes de luz y agua, peligro, vías, mascotas y eventos. Santa Marta.">
+<!-- Open Graph: cómo se ve el link al compartirlo en WhatsApp/Facebook -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Tírame un Facto">
+<meta property="og:title" content="Tírame un Facto — lo que pasa en tu barrio">
+<meta property="og:description" content="Cortes de luz y agua, peligro, vías, mascotas y eventos. Entérate al instante de lo que pasa en tu zona de Santa Marta.">
+<meta property="og:image" content="https://factoapp-sigma.vercel.app/icon-512.png">
+<meta property="og:url" content="https://factoapp-sigma.vercel.app">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Tírame un Facto — lo que pasa en tu barrio">
+<meta name="twitter:description" content="Cortes de luz y agua, peligro, vías, mascotas y eventos en tu zona de Santa Marta.">
+<meta name="twitter:image" content="https://factoapp-sigma.vercel.app/icon-512.png">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -137,6 +149,9 @@
 
   .card{ background:var(--card); border-radius:16px; padding:16px 16px 14px; animation:cardIn 0.3s ease-out backwards; border-left:4px solid var(--tag-color, var(--lima-txt)); }
   .card.resuelto{ opacity:0.5; filter:grayscale(0.7); }
+  .card.destacado{ animation:cardIn 0.3s ease-out backwards, brilloDestacado 2.4s ease-out; box-shadow:0 0 0 2px var(--lima), 0 6px 20px rgba(198,255,61,0.25); }
+  @keyframes brilloDestacado{ 0%{ box-shadow:0 0 0 3px var(--lima), 0 0 24px rgba(198,255,61,0.6); } 100%{ box-shadow:0 0 0 2px var(--lima), 0 6px 20px rgba(198,255,61,0.25); } }
+  .banner-destacado{ background:rgba(198,255,61,0.14); color:var(--lima-txt); font-size:0.78rem; font-weight:800; padding:9px 12px; border-radius:10px; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
   .aviso-oculto{ background:rgba(255,61,113,0.15); color:var(--coral); font-size:0.78rem; font-weight:700; padding:10px 12px; border-radius:10px; margin-bottom:10px; }
   @keyframes cardIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
   .tag.resuelto-tag{ background:rgba(139,143,163,0.2); color:var(--text-soft); }
@@ -604,6 +619,7 @@ let contactos = {};
 let fotoSeleccionada = null;
 let factoAReenviar = null;
 let ubicacionCapturada = null;
+let factoDestacadoId = null;
 
 // ===== SEGURIDAD: escape de contenido escrito por usuarios =====
 // Todo texto que venga de la base de datos (factos, comentarios, mensajes, nombres)
@@ -647,7 +663,8 @@ async function compartirFacto(id){
   const f = factos.find(x => x.id === id);
   if(!f) return;
   const emoji = emojisCategoria[f.categoria] || '📍';
-  const texto = `${emoji} ${nombresCategoria[f.categoria]} en ${f.zona}:\n"${f.texto}"\n\nVisto en Facto, la app de lo que pasa en tu barrio 👉 https://factoapp-sigma.vercel.app`;
+  const enlace = 'https://factoapp-sigma.vercel.app/?facto=' + encodeURIComponent(f.id);
+  const texto = `${emoji} ${nombresCategoria[f.categoria]} en ${f.zona}:\n"${f.texto}"\n\nVisto en Facto, la app de lo que pasa en tu barrio 👉 ${enlace}`;
 
   if(navigator.share){
     try{ await navigator.share({ text: texto }); }catch(e){ /* el usuario canceló, no pasa nada */ }
@@ -1238,6 +1255,15 @@ function render(){
     return numReportes < UMBRAL_REPORTES || f.autor_tel === miTelefono;
   });
 
+  // Si se abrió la app desde un link de facto compartido, ese va de primero
+  if(factoDestacadoId){
+    const idx = lista.findIndex(f => f.id === factoDestacadoId);
+    if(idx > 0){
+      const [dest] = lista.splice(idx, 1);
+      lista.unshift(dest);
+    }
+  }
+
   if(lista.length === 0){
     feed.innerHTML = `<div class="empty-feed">
       <svg class="morro" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -1272,9 +1298,10 @@ function render(){
     const yoConfirme = f.confirmaciones.some(c => c.telefono === miTelefono);
     const numReportes = reportesPorFacto[f.id] || 0;
     const ocultoPorReportes = numReportes >= UMBRAL_REPORTES && f.autor_tel === miTelefono;
+    const esDestacado = f.id === factoDestacadoId;
     return `
-    <div class="card ${f.resuelto ? 'resuelto' : ''}" style="--tag-color:${colores[f.categoria]}; animation-delay:${idx*0.04}s">
-      ${ocultoPorReportes ? `<div class="aviso-oculto">⚠️ Este facto fue reportado varias veces y solo tú lo ves ahora — el resto de la comunidad ya no lo ve en su feed.</div>` : ''}
+    <div class="card ${f.resuelto ? 'resuelto' : ''} ${esDestacado ? 'destacado' : ''}" style="--tag-color:${colores[f.categoria]}; animation-delay:${idx*0.04}s">
+      ${esDestacado ? `<div class="banner-destacado">🔗 Este es el facto que te compartieron</div>` : ''}      ${ocultoPorReportes ? `<div class="aviso-oculto">⚠️ Este facto fue reportado varias veces y solo tú lo ves ahora — el resto de la comunidad ya no lo ve en su feed.</div>` : ''}
       ${f.foto_url ? `<img src="${escapeHTML(f.foto_url)}" class="card-foto" onclick="window.open(this.src, '_blank')">` : ''}
       <div class="card-top">
         <span class="tag ${f.resuelto ? 'resuelto-tag' : f.categoria}">${f.resuelto ? '✅ Resuelto' : nombresCategoria[f.categoria]}</span>
@@ -1800,6 +1827,13 @@ window.addEventListener('popstate', function(){
 async function iniciar(){
   cargarModo();
   mostrarFraseSplashAleatoria();
+
+  // Si llegamos desde un link de facto compartido, lo recordamos para destacarlo
+  try{
+    const params = new URLSearchParams(location.search);
+    const fid = params.get('facto');
+    if(fid){ factoDestacadoId = fid; }
+  }catch(e){}
   // El feed se puede ver sin registrarse — la identidad se pide solo al interactuar
   miNombre = localStorage.getItem('facto_nombre');
   miTelefono = localStorage.getItem('facto_telefono');
@@ -1826,6 +1860,13 @@ async function iniciar(){
   const espera = Math.max(0, 900 - tiempoTranscurrido);
   setTimeout(() => {
     document.getElementById('splash-screen').classList.add('oculto');
+    // Si venimos de un link compartido, llevamos la vista al facto destacado
+    if(factoDestacadoId){
+      const card = document.querySelector('.card.destacado');
+      if(card){ card.scrollIntoView({ behavior:'smooth', block:'center' }); }
+      // El resaltado se mantiene un rato y luego el facto vuelve a su lugar normal
+      setTimeout(() => { factoDestacadoId = null; }, 6000);
+    }
   }, espera);
 
   sb.channel('factos-cambios')
