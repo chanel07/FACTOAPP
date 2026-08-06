@@ -157,6 +157,10 @@
   .card-zona{ font-size:0.78rem; font-weight:800; color:var(--cyan); margin-bottom:5px; }
   .card-texto{ font-size:0.96rem; line-height:1.45; margin-bottom:13px; color:var(--text); }
   .card-footer{ display:flex; align-items:center; justify-content:space-between; }
+  .card-acciones{ display:flex; gap:6px; align-items:stretch; margin-top:10px; }
+  .card-acciones .accion-btn{ flex:1; text-align:center; padding:9px 4px; font-size:0.72rem; white-space:nowrap; }
+  .compartir-btn{ background:var(--card-alt); color:var(--text-soft); border:none; font-weight:800; border-radius:20px; cursor:pointer; transition:transform 0.1s; }
+  .compartir-btn:active{ transform:scale(0.92); }
   .confirmar-btn, .chat-btn, .dm-btn, .reenviar-btn{ border:none; font-weight:800; font-size:0.76rem; padding:8px 12px; border-radius:20px; cursor:pointer; transition:transform 0.1s; }
   .mas-btn{ border:none; background:var(--card-alt); color:var(--text-soft); font-weight:800; font-size:0.9rem; padding:8px 11px; border-radius:20px; cursor:pointer; transition:transform 0.1s; }
   .mas-btn:active{ transform:scale(0.9); }
@@ -636,7 +640,21 @@ function capturarUbicacion(){
 }
 
 const nombresCategoria = { peligro:'Peligro', servicios:'Luz / Agua', vias:'Vías', parche:'Parche', eventos:'Eventos', mascotas:'Mascotas', transporte:'Transporte' };
+const emojisCategoria = { peligro:'🚨', servicios:'💡', vias:'🚧', parche:'🔥', eventos:'🎉', mascotas:'🐶', transporte:'🚌' };
 const colores = { peligro:'#FF3D71', servicios:'#FFB84D', vias:'#3DD9FF', parche:'#C6FF3D', eventos:'#FF69B4', mascotas:'#D2965A', transporte:'#9AA0FF' };
+
+async function compartirFacto(id){
+  const f = factos.find(x => x.id === id);
+  if(!f) return;
+  const emoji = emojisCategoria[f.categoria] || '📍';
+  const texto = `${emoji} ${nombresCategoria[f.categoria]} en ${f.zona}:\n"${f.texto}"\n\nVisto en Facto, la app de lo que pasa en tu barrio 👉 https://factoapp-sigma.vercel.app`;
+
+  if(navigator.share){
+    try{ await navigator.share({ text: texto }); }catch(e){ /* el usuario canceló, no pasa nada */ }
+  } else {
+    window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank');
+  }
+}
 
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -1267,11 +1285,12 @@ function render(){
       ${f.lat && f.lng ? `<a class="card-mapa" href="https://www.google.com/maps?q=${Number(f.lat)},${Number(f.lng)}" target="_blank">🗺️ Ver ubicación exacta en el mapa</a>` : ''}
       <div class="card-footer">
         <span class="card-autor-row"><span class="mini-avatar" style="background:${colorAvatar(f.autor)};">${escapeHTML(f.autor.charAt(0).toUpperCase())}</span>${escapeHTML(f.autor)}</span>
-        <div style="display:flex; gap:6px; align-items:center;">
-          <button class="confirmar-btn ${yoConfirme ? 'confirmado' : ''}" onclick="confirmar('${attrJs(f.id)}')">✋ ${f.confirmaciones.length}</button>
-          <button class="chat-btn" onclick="abrirChat('${attrJs(f.id)}')">💬 ${f.comentarios.length}</button>
-          <button class="mas-btn" onclick="abrirMasOpciones('${attrJs(f.id)}')">⋮</button>
-        </div>
+      </div>
+      <div class="card-acciones">
+        <button class="accion-btn confirmar-btn ${yoConfirme ? 'confirmado' : ''}" onclick="confirmar('${attrJs(f.id)}')">✋ Confirmo · ${f.confirmaciones.length}</button>
+        <button class="accion-btn chat-btn" onclick="abrirChat('${attrJs(f.id)}')">💬 Comentar · ${f.comentarios.length}</button>
+        <button class="accion-btn compartir-btn" onclick="compartirFacto('${attrJs(f.id)}')">↗️ Compartir</button>
+        <button class="mas-btn" onclick="abrirMasOpciones('${attrJs(f.id)}')">⋮</button>
       </div>
     </div>
   `}).join('');
