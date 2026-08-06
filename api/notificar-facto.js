@@ -31,11 +31,16 @@ export default async function handler(req, res) {
   const cuerpo = texto.length > 90 ? texto.slice(0, 87) + '...' : texto;
 
   try {
+    // OneSignal tiene dos formatos de llave: las nuevas empiezan por "os_v2_"
+    // y usan "Key ...", las viejas usan "Basic ..."
+    const llave = process.env.ONESIGNAL_REST_API_KEY || '';
+    const autorizacion = llave.startsWith('os_v2_') ? `Key ${llave}` : `Basic ${llave}`;
+
     const respuesta = await fetch('https://api.onesignal.com/notifications', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${process.env.ONESIGNAL_REST_API_KEY}`
+        'Authorization': autorizacion
       },
       body: JSON.stringify({
         app_id: process.env.ONESIGNAL_APP_ID,
