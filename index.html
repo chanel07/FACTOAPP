@@ -137,6 +137,8 @@
   .empty-feed .emoji{ font-size:2.4rem; display:block; margin-bottom:10px; }
   .empty-feed .morro{ width:120px; height:auto; display:block; margin:0 auto 16px; filter:drop-shadow(0 4px 14px rgba(0,0,0,0.25)); }
   .empty-feed p{ font-weight:700; font-size:1.05rem; margin:0; color:var(--text); }
+  .nota-otros-barrios{ background:var(--card); border-left:4px solid var(--lima-txt); border-radius:14px; padding:14px 16px; margin-bottom:14px; font-size:0.9rem; line-height:1.5; color:var(--text-soft); }
+  .nota-otros-barrios strong{ color:var(--text); }
 
   .skeleton-card{ background:var(--card); border-radius:16px; padding:16px; height:110px; position:relative; overflow:hidden; }
   .skeleton-card::after{
@@ -1265,6 +1267,28 @@ function render(){
   }
 
   if(lista.length === 0){
+    // Si el vacío es por filtrar un barrio específico pero sí hay factos en
+    // el resto de la ciudad, se los mostramos para que nunca vea pantalla
+    // muerta (la causa #1 de abandono en apps comunitarias).
+    if(zonaActiva !== 'todas'){
+      const respaldoCiudad = factos
+        .filter(f => categoriaActiva === 'todos' || f.categoria === categoriaActiva)
+        .filter(f => !(ocultarResueltos && f.resuelto))
+        .filter(f => {
+          const nr = reportesPorFacto[f.id] || 0;
+          return nr < UMBRAL_REPORTES || f.autor_tel === miTelefono;
+        });
+
+      if(respaldoCiudad.length > 0){
+        const nota = `<div class="nota-otros-barrios">
+          <strong>Aún no hay factos en ${escapeHTML(zonaActiva)}.</strong> Sé el primero en tirar uno 🔥<br>
+          Mientras tanto, esto es lo que pasa en Santa Marta 👇
+        </div>`;
+        feed.innerHTML = nota + respaldoCiudad.map((f, idx) => tarjetaFacto(f, idx)).join('');
+        return;
+      }
+    }
+
     feed.innerHTML = `<div class="empty-feed">
       <svg class="morro" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs>
@@ -1294,12 +1318,15 @@ function render(){
     return;
   }
 
-  feed.innerHTML = lista.map((f, idx) => {
-    const yoConfirme = f.confirmaciones.some(c => c.telefono === miTelefono);
-    const numReportes = reportesPorFacto[f.id] || 0;
-    const ocultoPorReportes = numReportes >= UMBRAL_REPORTES && f.autor_tel === miTelefono;
-    const esDestacado = f.id === factoDestacadoId;
-    return `
+  feed.innerHTML = lista.map((f, idx) => tarjetaFacto(f, idx)).join('');
+}
+
+function tarjetaFacto(f, idx){
+  const yoConfirme = f.confirmaciones.some(c => c.telefono === miTelefono);
+  const numReportes = reportesPorFacto[f.id] || 0;
+  const ocultoPorReportes = numReportes >= UMBRAL_REPORTES && f.autor_tel === miTelefono;
+  const esDestacado = f.id === factoDestacadoId;
+  return `
     <div class="card ${f.resuelto ? 'resuelto' : ''} ${esDestacado ? 'destacado' : ''}" style="--tag-color:${colores[f.categoria]}; animation-delay:${idx*0.04}s">
       ${esDestacado ? `<div class="banner-destacado">🔗 Este es el facto que te compartieron</div>` : ''}      ${ocultoPorReportes ? `<div class="aviso-oculto">⚠️ Este facto fue reportado varias veces y solo tú lo ves ahora — el resto de la comunidad ya no lo ve en su feed.</div>` : ''}
       ${f.foto_url ? `<img src="${escapeHTML(f.foto_url)}" class="card-foto" onclick="window.open(this.src, '_blank')">` : ''}
@@ -1320,7 +1347,7 @@ function render(){
         <button class="mas-btn" onclick="abrirMasOpciones('${attrJs(f.id)}')">⋮</button>
       </div>
     </div>
-  `}).join('');
+  `;
 }
 
 function abrirMasOpciones(id){
