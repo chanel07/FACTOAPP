@@ -52,12 +52,14 @@
     font-weight:800;
     font-size:1.7rem;
     letter-spacing:-0.01em;
-    color:var(--lima);
+    color:var(--lima-txt);
     margin:0;
     text-shadow:0 0 20px rgba(198,255,61,0.4);
     line-height:1.25;
   }
   .splash-logo span{ color:var(--coral); text-shadow:0 0 20px rgba(255,61,113,0.4); }
+  body.modo-claro .splash-logo{ text-shadow:none; }
+  body.modo-claro .splash-logo span{ text-shadow:none; }
   .splash-tagline{
     color:var(--text-soft);
     font-size:0.85rem;
@@ -67,7 +69,7 @@
   .splash-spinner{
     width:28px; height:28px;
     border:3px solid var(--card-alt);
-    border-top-color:var(--lima);
+    border-top-color:var(--lima-txt);
     border-radius:50%;
     margin:0 auto;
     animation:splashGiro 0.8s linear infinite;
@@ -1093,6 +1095,18 @@ async function publicarReporte(){
     cerrarModal();
     await cargarFactos();
     showToast('¡Facto tirado! 🔥');
+
+    // Aviso push a la comunidad (no bloquea la publicación si falla)
+    fetch('/api/notificar-facto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        categoria: nombresCategoria[categoriaSeleccionada] || categoriaSeleccionada,
+        zona,
+        texto,
+        autor_tel: miTelefono
+      })
+    }).catch(e => console.log('No se pudo enviar el aviso de facto nuevo', e));
   }catch(e){
     console.error(e);
     const detalle = e && (e.message || e.error_description || e.hint || e.code) || '';
