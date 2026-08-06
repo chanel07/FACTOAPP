@@ -34,38 +34,70 @@ La imagen NO es apta (apta: false) únicamente si contiene:
 
 La imagen SÍ es apta (apta: true) si muestra situaciones normales de barrio aunque sean fuertes: accidentes de tránsito, calles inundadas, basura, daños, personas discutiendo, animales heridos, etc. Ante la duda razonable, marca apta: true.`;
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: prompt },
-              { inline_data: { mime_type: mime, data: base64 } }
-            ]
-          }],
-          generationConfig: { temperature: 0 },
-          // Para moderación necesitamos que Gemini analice la imagen en vez de
-          // negarse a responder; el veredicto lo da nuestro prompt, no su filtro interno
-          safetySettings: [
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' }
-          ]
-        })
-      }
-    );
+    // Google retira y renombra modelos con frecuencia; probamos en orden
+    // hasta que alguno responda, para que el filtro no muera con un solo nombre
+    const MODELOS = [
+      'gemini-3-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-flash-latest',
+      'gemini-2.5-flash-lite',
+      'gemini-2.5-flash'
+    ];
 
-    const data = await geminiRes.json();
+    const cuerpoPeticion = JSON.stringify({
+      contents: [{
+        parts: [
+          { text: prompt },
+          { inline_data: { mime_type: mime, data: base64 } }
+        ]
+      }],
+      generationConfig: { temperature: 0 },
+      // Para moderación necesitamos que Gemini analice la imagen en vez de
+      // negarse a responder; el veredicto lo da nuestro prompt, no su filtro interno
+      safetySettings: [
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' }
+      ]
+    });
+
+    let geminiRes = null;
+    let data = null;
+    let modeloUsado = null;
+
+    for (const modelo of MODELOS) {
+      geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: cuerpoPeticion
+        }
+      );
+      data = await geminiRes.json();
+
+      if (geminiRes.ok) {
+        modeloUsado = modelo;
+        break;
+      }
+      // 404 = ese modelo ya no existe: probamos el siguiente de la lista
+      if (data?.error?.code === 404) {
+        console.log(`Modelo ${modelo} no disponible (404), probando el siguiente...`);
+        continue;
+      }
+      // Otro tipo de error (llave inválida, cuota, etc.): no tiene sentido seguir probando
+      break;
+    }
+
     if (!geminiRes.ok) {
-      console.error('Error de Gemini:', data);
-      // Si Gemini falla, dejamos pasar la foto para no bloquear la app
+      console.error('Error de Gemini con todos los modelos:', data);
+      // Si Gemini falla por razones técnicas, dejamos pasar la foto para no bloquear la app
       // (la moderación comunitaria queda como respaldo)
       return res.status(200).json({ apta: true, razon: 'moderación no disponible' });
     }
+
+    console.log('Moderación hecha con el modelo:', modeloUsado);
 
     const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
