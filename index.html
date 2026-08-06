@@ -1077,6 +1077,26 @@ async function publicarReporte(){
     let fotoUrl = null;
     if(fotoSeleccionada){
       fotoUrl = await subirFotoACloudinary(fotoSeleccionada);
+
+      // Filtro de contenido: Gemini revisa la foto antes de publicar
+      btn.textContent = 'Revisando foto...';
+      try{
+        const modRes = await fetch('/api/moderar-foto', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ foto_url: fotoUrl })
+        });
+        const veredicto = await modRes.json();
+        if(veredicto && veredicto.apta === false){
+          showToast('🚫 Esta foto no cumple las normas de la comunidad');
+          btn.disabled = false;
+          btn.textContent = 'Tirar facto';
+          return;
+        }
+      }catch(e){
+        console.log('Moderación no disponible, continuando', e);
+      }
+      btn.textContent = 'Publicando...';
     }
 
     const { error } = await sb.from('factos').insert({
