@@ -1084,8 +1084,11 @@ async function subirVideoACloudinary(file){
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-  // Cloudinary procesa el video de forma asíncrona y nos devuelve la URL sin
-  // esperar a que termine de optimizar; la reproducción se sirve optimizada aparte
+  // async=true: Cloudinary responde apenas recibe el archivo, sin esperar a
+  // terminar de procesarlo en su servidor. Reduce el tiempo que la app queda
+  // esperando y no toca el audio ni recorta el video.
+  formData.append('async', 'true');
+
   const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`, { method:'POST', body: formData });
   const data = await res.json();
   if(!data.secure_url) throw new Error('No se pudo subir el video');
