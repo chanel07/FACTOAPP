@@ -289,6 +289,21 @@
   .field input, .field select, .field textarea{ width:100%; padding:12px 14px; border-radius:10px; border:1.5px solid var(--linea); font-size:0.95rem; background:var(--card-alt); color:var(--text); font-family:'Plus Jakarta Sans', sans-serif; }
   .field input:focus, .field select:focus, .field textarea:focus{ outline:none; border-color:var(--lima); box-shadow:0 0 0 3px rgba(198,255,61,0.15); }
   .field textarea{ resize:none; min-height:80px; }
+  .texto-con-voz{ position:relative; }
+  .voz-btn{ position:absolute; right:8px; bottom:8px; width:40px; height:40px; border-radius:50%; border:none; background:var(--card); color:var(--text); font-size:1.15rem; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.15); transition:transform 0.1s; }
+  .voz-btn:active{ transform:scale(0.9); }
+  .voz-btn.grabando{ background:var(--coral); animation:vozPulso 1.2s infinite; }
+  @keyframes vozPulso{ 0%,100%{ box-shadow:0 0 0 0 rgba(255,61,113,0.5); } 50%{ box-shadow:0 0 0 8px rgba(255,61,113,0); } }
+  .voz-indicador{ display:none; position:absolute; left:0; right:0; bottom:8px; margin:0 56px 0 12px; align-items:center; gap:8px; pointer-events:none; }
+  .voz-indicador.activo{ display:flex; }
+  .voz-texto{ font-size:0.8rem; font-weight:800; color:var(--coral); }
+  .voz-puntos{ animation:vozPuntos 1.4s infinite steps(1); }
+  @keyframes vozPuntos{ 0%{ opacity:0.2; } 50%{ opacity:1; } 100%{ opacity:0.2; } }
+  .voz-ondas{ display:inline-flex; align-items:center; gap:3px; }
+  .voz-ondas i{ width:3px; height:10px; background:var(--coral); border-radius:3px; animation:vozOnda 0.9s infinite ease-in-out; }
+  .voz-ondas i:nth-child(2){ animation-delay:0.2s; }
+  .voz-ondas i:nth-child(3){ animation-delay:0.4s; }
+  @keyframes vozOnda{ 0%,100%{ height:6px; } 50%{ height:16px; } }
   .cat-picker{ display:flex; gap:8px; flex-wrap:wrap; }
   .cat-option{ padding:9px 13px; border-radius:12px; font-size:0.78rem; font-weight:800; cursor:pointer; border:1.5px solid var(--linea); opacity:0.55; background:var(--card-alt); color:var(--text-soft); }
   .cat-option.selected{ opacity:1; }
@@ -474,7 +489,14 @@
       </div>
       <div class="field">
         <label for="rep-texto">¿Qué está pasando?</label>
-        <textarea id="rep-texto" placeholder="Ej: No hay agua desde las 8:00 a.m. en el barrio"></textarea>
+        <div class="texto-con-voz">
+          <textarea id="rep-texto" placeholder="Ej: No hay agua desde las 8:00 a.m. en el barrio"></textarea>
+          <button type="button" class="voz-btn" id="voz-btn" onclick="toggleDictado()" title="Dictar por voz">🎤</button>
+          <div class="voz-indicador" id="voz-indicador">
+            <span class="voz-ondas"><i></i><i></i><i></i></span>
+            <span class="voz-texto">Tirando un facto<span class="voz-puntos">...</span></span>
+          </div>
+        </div>
       </div>
       <div class="field">
         <label>Ubicación (opcional)</label>
@@ -1260,6 +1282,7 @@ async function abrirModal(){
 function cerrarModal(){
   document.getElementById('modal-reporte').classList.remove('open');
   document.getElementById('rep-texto').value = '';
+  if(dictando) detenerDictado();
   quitarFoto();
   quitarVideo();
 }
@@ -1273,6 +1296,74 @@ const ejemplosPorCategoria = {
   mascotas: 'Ej: Perrito perdido color café cerca del parque',
   transporte: 'Ej: La ruta 109 no está pasando desde hace 1 hora'
 };
+
+// ===== DICTADO POR VOZ =====
+let reconocimientoVoz = null;
+let dictando = false;
+
+// El botón de micrófono solo aparece si el navegador soporta reconocimiento de voz
+function inicializarVoz(){
+  const Reconocimiento = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const btn = document.getElementById('voz-btn');
+  if(!Reconocimiento){
+    if(btn) btn.style.display = 'none'; // sin soporte: se escribe normal
+    return;
+  }
+  reconocimientoVoz = new Reconocimiento();
+  reconocimientoVoz.lang = 'es-CO';
+  reconocimientoVoz.continuous = true;
+  reconocimientoVoz.interimResults = true;
+
+  let textoBase = '';
+
+  reconocimientoVoz.onresult = (e) => {
+    let finales = '';
+    let parcial = '';
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      const t = e.results[i][0].transcript;
+      if(e.results[i].isFinal) finales += t;
+      else parcial += t;
+    }
+    if(finales){ textoBase = (textoBase + ' ' + finales).trim(); }
+    const campo = document.getElementById('rep-texto');
+    campo.value = (textoBase + ' ' + parcial).trim();
+  };
+
+  reconocimientoVoz.onend = () => {
+    // Si seguía dictando (no lo paró el usuario), reanudamos
+    if(dictando){ try{ reconocimientoVoz.start(); }catch(e){ detenerDictado(); } }
+  };
+
+  reconocimientoVoz.onerror = (e) => {
+    if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+      showToast('Activa el permiso de micrófono para dictar');
+    }
+    detenerDictado();
+  };
+
+  // Guardamos el texto ya escrito como base al empezar
+  reconocimientoVoz._fijarBase = () => { textoBase = document.getElementById('rep-texto').value.trim(); };
+}
+
+function toggleDictado(){
+  if(!reconocimientoVoz){ showToast('Tu teléfono no permite dictar aquí'); return; }
+  if(dictando){ detenerDictado(); return; }
+
+  reconocimientoVoz._fijarBase();
+  try{
+    reconocimientoVoz.start();
+    dictando = true;
+    document.getElementById('voz-btn').classList.add('grabando');
+    document.getElementById('voz-indicador').classList.add('activo');
+  }catch(e){ console.log('No se pudo iniciar el dictado', e); }
+}
+
+function detenerDictado(){
+  dictando = false;
+  document.getElementById('voz-btn').classList.remove('grabando');
+  document.getElementById('voz-indicador').classList.remove('activo');
+  try{ reconocimientoVoz.stop(); }catch(e){}
+}
 
 function elegirCategoria(cat){
   categoriaSeleccionada = cat;
@@ -2168,6 +2259,7 @@ async function iniciar(){
     });
   }
   actualizarRacha();
+  inicializarVoz();
   mostrarTooltipInicial();
   mostrarTooltipsNavegacion();
 
