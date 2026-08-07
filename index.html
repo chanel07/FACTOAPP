@@ -1005,6 +1005,81 @@ function quitarVideo(){
   document.getElementById('video-quitar').style.display = 'none';
 }
 
+// Intenta comprimir el video en el propio teléfono antes de subirlo, para que
+// pese menos y suba más rápido. Si algo falla o el navegador no lo soporta,
+// devuelve el archivo original (nunca bloquea la publicación).
+async function comprimirVideo(file, alActualizar){
+  return new Promise((resolve) => {
+    try{
+      if(typeof MediaRecorder === 'undefined' || !HTMLCanvasElement.prototype.captureStream){
+        return resolve(file); // navegador sin soporte -> original
+      }
+
+      const video = document.createElement('video');
+      video.muted = true;
+      video.playsInline = true;
+      video.src = URL.createObjectURL(file);
+
+      video.onloadedmetadata = async () => {
+        // Resolución objetivo: máximo 480px de ancho (suficiente para móvil)
+        const maxAncho = 480;
+        const escala = Math.min(1, maxAncho / video.videoWidth);
+        const w = Math.round(video.videoWidth * escala);
+        const h = Math.round(video.videoHeight * escala);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+
+        // Elegimos un formato que el teléfono sepa grabar
+        let mime = 'video/webm;codecs=vp8';
+        if(!MediaRecorder.isTypeSupported(mime)) mime = 'video/webm';
+        if(!MediaRecorder.isTypeSupported(mime)) return resolve(file);
+
+        const stream = canvas.captureStream(24);
+
+        // Intentamos conservar el audio original
+        try{
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const src = audioCtx.createMediaElementSource(video);
+          const dest = audioCtx.createMediaStreamDestination();
+          src.connect(dest);
+          dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+        }catch(e){ /* si el audio falla, sigue solo con video */ }
+
+        const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 900000 });
+        const trozos = [];
+        rec.ondataavailable = e => { if(e.data.size) trozos.push(e.data); };
+        rec.onstop = () => {
+          const blob = new Blob(trozos, { type: mime });
+          URL.revokeObjectURL(video.src);
+          // Si por lo que sea salió más pesado que el original, usamos el original
+          if(blob.size >= file.size || blob.size < 1000){ return resolve(file); }
+          resolve(new File([blob], 'facto-video.webm', { type: mime }));
+        };
+        rec.onerror = () => resolve(file);
+
+        const dibujar = () => {
+          if(video.paused || video.ended) return;
+          ctx.drawImage(video, 0, 0, w, h);
+          requestAnimationFrame(dibujar);
+        };
+
+        rec.start();
+        video.play();
+        dibujar();
+        video.onended = () => { try{ rec.stop(); }catch(e){ resolve(file); } };
+        // Tope de seguridad por si el video no dispara onended
+        setTimeout(() => { if(rec.state !== 'inactive'){ try{ rec.stop(); }catch(e){} } }, (MAX_VIDEO_SEG + 3) * 1000);
+      };
+
+      video.onerror = () => resolve(file);
+    }catch(e){
+      resolve(file);
+    }
+  });
+}
+
 async function subirVideoACloudinary(file){
   const formData = new FormData();
   formData.append('file', file);
@@ -1232,8 +1307,14 @@ async function publicarReporte(){
 
     let videoUrl = null;
     if(videoSeleccionado){
+      btn.textContent = 'Preparando video...';
+      let videoAsubir = videoSeleccionado;
+      try{
+        videoAsubir = await comprimirVideo(videoSeleccionado);
+      }catch(e){ console.log('Compresión falló, subo original', e); }
+
       btn.textContent = 'Subiendo video...';
-      videoUrl = await subirVideoACloudinary(videoSeleccionado);
+      videoUrl = await subirVideoACloudinary(videoAsubir);
 
       // Moderación del video: Gemini revisa algunos fotogramas
       btn.textContent = 'Revisando video...';
