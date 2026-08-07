@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
-  const { categoria, zona, texto } = req.body || {};
+  const { categoria, zona, texto, facto_id } = req.body || {};
 
   if (!categoria || !zona || !texto) {
     return res.status(400).json({ error: 'Faltan datos (categoria, zona, texto)' });
@@ -47,7 +47,9 @@ export default async function handler(req, res) {
         included_segments: ['Total Subscriptions'],
         headings: { en: titulo, es: titulo },
         contents: { en: cuerpo, es: cuerpo },
-        url: 'https://factoapp-sigma.vercel.app'
+        url: facto_id
+          ? `https://factoapp-sigma.vercel.app/?facto=${encodeURIComponent(facto_id)}`
+          : 'https://factoapp-sigma.vercel.app'
       })
     });
 
