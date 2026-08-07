@@ -974,9 +974,9 @@ function previsualizarVideo(idInput){
       URL.revokeObjectURL(url);
       return;
     }
-    // Tope de peso: 40 MB, para no reventar la cuota ni los datos del usuario
-    if(file.size > 40 * 1024 * 1024){
-      showToast('El video es muy pesado (máx. 40 MB)');
+    // Tope de peso: 80 MB, para no reventar la cuota ni los datos del usuario
+    if(file.size > 80 * 1024 * 1024){
+      showToast('El video es muy pesado (máx. 80 MB)');
       input.value = '';
       URL.revokeObjectURL(url);
       return;
