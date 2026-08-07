@@ -1350,9 +1350,11 @@ async function publicarReporte(){
       lng: ubicacionCapturada ? ubicacionCapturada.lng : null,
       autor: miNombre,
       autor_tel: miTelefono
-    });
+    }).select('id').single();
 
     if(error) throw error;
+
+    const nuevoFactoId = data ? data.id : null;
 
     cerrarModal();
     await cargarFactos();
@@ -1366,6 +1368,7 @@ async function publicarReporte(){
         categoria: nombresCategoria[categoriaSeleccionada] || categoriaSeleccionada,
         zona,
         texto,
+        facto_id: nuevoFactoId,
         autor_tel: miTelefono
       })
     }).catch(e => console.log('No se pudo enviar el aviso de facto nuevo', e));
@@ -2136,6 +2139,26 @@ async function iniciar(){
 
   const inicioCarga = Date.now();
   await cargarFactos();
+
+  // Si la app estaba en segundo plano y se abre desde una notificación con
+  // ?facto=, releemos la URL al volver al foco y saltamos a ese facto.
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible'){
+      try{
+        const p = new URLSearchParams(location.search);
+        const fid = p.get('facto');
+        if(fid && fid !== factoDestacadoId){
+          factoDestacadoId = fid;
+          render();
+          setTimeout(() => {
+            const card = document.querySelector('.card.destacado');
+            if(card){ card.scrollIntoView({ behavior:'smooth', block:'center' }); }
+            setTimeout(() => { factoDestacadoId = null; }, 6000);
+          }, 300);
+        }
+      }catch(e){}
+    }
+  });
 
   // Aseguramos que el splash se vea al menos 900ms, para que no sea un parpadeo
   const tiempoTranscurrido = Date.now() - inicioCarga;
