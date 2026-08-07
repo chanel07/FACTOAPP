@@ -167,7 +167,9 @@
   .filtro-resueltos{ padding:0 20px 8px; display:flex; justify-content:flex-end; }
   .filtro-resueltos label{ font-size:0.76rem; color:var(--text-soft); font-weight:700; display:flex; align-items:center; gap:6px; }
   .card-foto{ width:100%; border-radius:10px; margin-bottom:10px; max-height:420px; object-fit:contain; background:var(--card-alt); cursor:pointer; }
-  .card-video{ width:100%; border-radius:10px; margin-bottom:10px; max-height:420px; background:#000; }
+  .card-video{ width:100%; border-radius:10px; margin-bottom:4px; max-height:420px; background:#000; }
+  .aviso-video-audio{ font-size:0.76rem; color:var(--text-soft); background:var(--card-alt); border-radius:8px; padding:8px 10px; margin-top:6px; line-height:1.4; }
+  .video-sin-audio{ display:inline-flex; align-items:center; gap:4px; font-size:0.7rem; color:var(--text-soft); font-weight:700; margin-bottom:10px; }
   .card-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px; }
   .tag{ font-size:0.66rem; font-weight:800; padding:4px 11px; border-radius:12px; text-transform:uppercase; letter-spacing:0.03em; }
   .tag.peligro{ background:rgba(255,61,113,0.18); color:var(--coral); }
@@ -485,6 +487,7 @@
       </div>
       <div class="field">
         <label>Video (opcional, máx. 20 seg)</label>
+        <div class="aviso-video-audio">🔇 Los videos se comprimen para cargar rápido y ahorrar tus datos. Se envían sin audio.</div>
         <div class="foto-botones-row">
           <label class="foto-btn" id="video-btn-camara">🎥 Grabar video
             <input type="file" id="rep-video-camara" accept="video/*" capture="environment" style="display:none;" onchange="previsualizarVideo('rep-video-camara')">
@@ -1084,11 +1087,8 @@ async function subirVideoACloudinary(file){
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-  // async=true: Cloudinary responde apenas recibe el archivo, sin esperar a
-  // terminar de procesarlo en su servidor. Reduce el tiempo que la app queda
-  // esperando y no toca el audio ni recorta el video.
-  formData.append('async', 'true');
-
+  // Cloudinary procesa el video de forma asíncrona y nos devuelve la URL sin
+  // esperar a que termine de optimizar; la reproducción se sirve optimizada aparte
   const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`, { method:'POST', body: formData });
   const data = await res.json();
   if(!data.secure_url) throw new Error('No se pudo subir el video');
@@ -1310,8 +1310,14 @@ async function publicarReporte(){
 
     let videoUrl = null;
     if(videoSeleccionado){
+      btn.textContent = 'Preparando video...';
+      let videoAsubir = videoSeleccionado;
+      try{
+        videoAsubir = await comprimirVideo(videoSeleccionado);
+      }catch(e){ console.log('Compresión falló, subo original', e); }
+
       btn.textContent = 'Subiendo video...';
-      videoUrl = await subirVideoACloudinary(videoSeleccionado);
+      videoUrl = await subirVideoACloudinary(videoAsubir);
 
       // Moderación del video: Gemini revisa algunos fotogramas
       btn.textContent = 'Revisando video...';
@@ -1558,12 +1564,11 @@ function renderBannerImpacto(){
   </div>`;
 }
 
-// Pide a Cloudinary que entregue el video más liviano (calidad automática y
-// ancho limitado) conservando el audio. Evitamos f_auto porque en algunos
-// formatos deja el video sin pista de sonido.
+// Pide a Cloudinary que entregue el video comprimido y en formato liviano,
+// para que cargue fluido en vez de entrecortado (calidad y formato automáticos)
 function optimizarVideo(url){
   if(!url || url.indexOf('/upload/') === -1) return url;
-  return url.replace('/upload/', '/upload/q_auto,w_720,c_limit/');
+  return url.replace('/upload/', '/upload/q_auto,f_auto,w_720,c_limit/');
 }
 
 function tarjetaFacto(f, idx){
@@ -1578,7 +1583,7 @@ function tarjetaFacto(f, idx){
     <div class="card ${f.resuelto ? 'resuelto' : ''} ${esDestacado ? 'destacado' : ''}" style="--tag-color:${colores[f.categoria]}; animation-delay:${idx*0.04}s">
       ${esDestacado ? `<div class="banner-destacado">🔗 Este es el facto que te compartieron</div>` : ''}      ${ocultoPorReportes ? `<div class="aviso-oculto">⚠️ Este facto fue reportado varias veces y solo tú lo ves ahora — el resto de la comunidad ya no lo ve en su feed.</div>` : ''}
       ${f.foto_url ? `<img src="${escapeHTML(f.foto_url)}" class="card-foto" onclick="window.open(this.src, '_blank')">` : ''}
-      ${f.video_url ? `<video src="${escapeHTML(optimizarVideo(f.video_url))}" class="card-video" controls playsinline preload="metadata"></video>` : ''}
+      ${f.video_url ? `<video src="${escapeHTML(optimizarVideo(f.video_url))}" class="card-video" controls playsinline preload="metadata"></video><div class="video-sin-audio">🔇 Video sin audio (comprimido para cargar rápido)</div>` : ''}
       <div class="card-top">
         <span class="tag ${f.resuelto ? 'resuelto-tag' : f.categoria}">${f.resuelto ? '✅ Resuelto' : nombresCategoria[f.categoria]}</span>
         <span class="card-time">${activo ? '<span class="punto-activo"></span>' : ''}${haceCuanto(f.created_at)}</span>
