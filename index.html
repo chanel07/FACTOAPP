@@ -1307,14 +1307,8 @@ async function publicarReporte(){
 
     let videoUrl = null;
     if(videoSeleccionado){
-      btn.textContent = 'Preparando video...';
-      let videoAsubir = videoSeleccionado;
-      try{
-        videoAsubir = await comprimirVideo(videoSeleccionado);
-      }catch(e){ console.log('Compresión falló, subo original', e); }
-
       btn.textContent = 'Subiendo video...';
-      videoUrl = await subirVideoACloudinary(videoAsubir);
+      videoUrl = await subirVideoACloudinary(videoSeleccionado);
 
       // Moderación del video: Gemini revisa algunos fotogramas
       btn.textContent = 'Revisando video...';
@@ -1561,11 +1555,12 @@ function renderBannerImpacto(){
   </div>`;
 }
 
-// Pide a Cloudinary que entregue el video comprimido y en formato liviano,
-// para que cargue fluido en vez de entrecortado (calidad y formato automáticos)
+// Pide a Cloudinary que entregue el video más liviano (calidad automática y
+// ancho limitado) conservando el audio. Evitamos f_auto porque en algunos
+// formatos deja el video sin pista de sonido.
 function optimizarVideo(url){
   if(!url || url.indexOf('/upload/') === -1) return url;
-  return url.replace('/upload/', '/upload/q_auto,f_auto,w_720,c_limit/');
+  return url.replace('/upload/', '/upload/q_auto,w_720,c_limit/');
 }
 
 function tarjetaFacto(f, idx){
