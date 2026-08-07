@@ -1350,15 +1350,26 @@ async function publicarReporte(){
       lng: ubicacionCapturada ? ubicacionCapturada.lng : null,
       autor: miNombre,
       autor_tel: miTelefono
-    }).select('id').single();
+    });
 
     if(error) throw error;
-
-    const nuevoFactoId = data ? data.id : null;
 
     cerrarModal();
     await cargarFactos();
     showToast('¡Facto tirado! 🔥');
+
+    // Buscamos el ID del facto recién creado para que la push lleve directo a él.
+    // Es opcional: si falla, la publicación ya ocurrió y la push llevará al feed.
+    let nuevoFactoId = null;
+    try{
+      const { data: recien } = await sb.from('factos')
+        .select('id')
+        .eq('autor_tel', miTelefono)
+        .eq('texto', texto)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if(recien && recien.length){ nuevoFactoId = recien[0].id; }
+    }catch(e){ console.log('No se pudo obtener el id del facto', e); }
 
     // Aviso push a la comunidad (no bloquea la publicación si falla)
     fetch('/api/notificar-facto', {
