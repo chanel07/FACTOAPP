@@ -974,9 +974,9 @@ function previsualizarVideo(idInput){
       URL.revokeObjectURL(url);
       return;
     }
-    // Tope de peso: 80 MB, para no reventar la cuota ni los datos del usuario
-    if(file.size > 80 * 1024 * 1024){
-      showToast('El video es muy pesado (máx. 80 MB)');
+    // Tope de peso: 40 MB, para no reventar la cuota ni los datos del usuario
+    if(file.size > 40 * 1024 * 1024){
+      showToast('El video es muy pesado (máx. 40 MB)');
       input.value = '';
       URL.revokeObjectURL(url);
       return;
@@ -1084,11 +1084,8 @@ async function subirVideoACloudinary(file){
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-  // async=true: Cloudinary responde apenas recibe el archivo, sin esperar a
-  // terminar de procesarlo en su servidor. Reduce el tiempo que la app queda
-  // esperando y no toca el audio ni recorta el video.
-  formData.append('async', 'true');
-
+  // Cloudinary procesa el video de forma asíncrona y nos devuelve la URL sin
+  // esperar a que termine de optimizar; la reproducción se sirve optimizada aparte
   const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`, { method:'POST', body: formData });
   const data = await res.json();
   if(!data.secure_url) throw new Error('No se pudo subir el video');
@@ -1310,8 +1307,14 @@ async function publicarReporte(){
 
     let videoUrl = null;
     if(videoSeleccionado){
+      btn.textContent = 'Preparando video...';
+      let videoAsubir = videoSeleccionado;
+      try{
+        videoAsubir = await comprimirVideo(videoSeleccionado);
+      }catch(e){ console.log('Compresión falló, subo original', e); }
+
       btn.textContent = 'Subiendo video...';
-      videoUrl = await subirVideoACloudinary(videoSeleccionado);
+      videoUrl = await subirVideoACloudinary(videoAsubir);
 
       // Moderación del video: Gemini revisa algunos fotogramas
       btn.textContent = 'Revisando video...';
@@ -1558,12 +1561,11 @@ function renderBannerImpacto(){
   </div>`;
 }
 
-// Pide a Cloudinary que entregue el video más liviano (calidad automática y
-// ancho limitado) conservando el audio. Evitamos f_auto porque en algunos
-// formatos deja el video sin pista de sonido.
+// Pide a Cloudinary que entregue el video comprimido y en formato liviano,
+// para que cargue fluido en vez de entrecortado (calidad y formato automáticos)
 function optimizarVideo(url){
   if(!url || url.indexOf('/upload/') === -1) return url;
-  return url.replace('/upload/', '/upload/q_auto,w_720,c_limit/');
+  return url.replace('/upload/', '/upload/q_auto,f_auto,w_720,c_limit/');
 }
 
 function tarjetaFacto(f, idx){
