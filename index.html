@@ -92,7 +92,7 @@
   .logo-row{ display:flex; justify-content:space-between; align-items:center; }
   .logo{ font-family:'Baloo 2', sans-serif; font-weight:800; font-size:1.3rem; letter-spacing:-0.01em; color:var(--lima-txt); margin:0; text-shadow:0 0 14px rgba(198,255,61,0.3); line-height:1.15; }
   .logo span{ color:var(--coral); text-shadow:0 0 18px rgba(255,61,113,0.35); }
-  header .tagline{ color:var(--text-soft); font-size:0.82rem; margin:4px 0 16px; font-weight:600; }
+  header .tagline{ color:var(--text-soft); font-size:0.82rem; margin:4px 0 10px; font-weight:600; }
   .perfil-btn{ width:38px; height:38px; border-radius:50%; background:var(--violeta); border:none; color:#fff; font-weight:800; font-size:0.95rem; cursor:pointer; position:relative; }
   .modo-btn{ width:38px; height:38px; border-radius:50%; background:var(--card-alt); border:none; font-size:1.1rem; cursor:pointer; }
   .racha-badge{ position:absolute; bottom:-4px; right:-4px; background:var(--bg); border-radius:10px; padding:1px 4px; font-size:0.6rem; font-weight:800; display:none; }
@@ -110,7 +110,7 @@
   body.modo-claro .msg.msg-mio{ color:#fff; }
   body.modo-claro .bottom-nav{ box-shadow:0 -2px 8px rgba(0,0,0,0.05); }
   .zona-select{ width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--linea); font-weight:700; font-size:0.9rem; color:var(--text); background:var(--card); }
-  .zona-btn{ width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--linea); font-weight:700; font-size:0.9rem; color:var(--text); background:var(--card); display:flex; align-items:center; justify-content:space-between; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif; text-align:left; }
+  .zona-btn{ width:100%; padding:9px 14px; border-radius:12px; border:1.5px solid var(--linea); font-weight:700; font-size:0.86rem; color:var(--text); background:var(--card); display:flex; align-items:center; justify-content:space-between; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif; text-align:left; }
   .zona-btn-flecha{ color:var(--text-soft); font-size:0.75rem; }
   .lista-zonas{ max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; margin-bottom:8px; }
   .zona-item{ padding:12px 14px; border-radius:10px; background:var(--card-alt); font-weight:600; font-size:0.92rem; cursor:pointer; color:var(--text); }
@@ -143,6 +143,16 @@
   .punto-activo{ display:inline-block; width:7px; height:7px; border-radius:50%; background:#2ecc71; margin-right:4px; animation:latido 1.6s ease-in-out infinite; vertical-align:middle; }
   @keyframes latido{ 0%,100%{ box-shadow:0 0 0 0 rgba(46,204,113,0.6); } 50%{ box-shadow:0 0 0 5px rgba(46,204,113,0); } }
   .banner-impacto{ background:linear-gradient(135deg, rgba(198,255,61,0.12), rgba(61,217,255,0.10)); border:1px solid var(--linea); border-radius:14px; padding:12px 16px; margin:0 20px 4px; display:flex; align-items:center; gap:10px; font-size:0.84rem; font-weight:700; color:var(--text); }
+  .termometro{ margin:0 20px 10px; }
+  .term-titulo{ font-size:0.72rem; font-weight:800; color:var(--text-soft); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:8px; }
+  .term-grid{ display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; }
+  .term-item{ border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:2px; border:1px solid var(--linea); }
+  .term-num{ font-size:1.5rem; font-weight:800; line-height:1; font-family:'Baloo 2', sans-serif; }
+  .term-lbl{ font-size:0.74rem; font-weight:700; color:var(--text-soft); }
+  .term-rojo{ background:rgba(255,61,113,0.12); } .term-rojo .term-num{ color:var(--coral); }
+  .term-verde{ background:rgba(46,204,113,0.12); } .term-verde .term-num{ color:#2ecc71; }
+  .term-amarillo{ background:rgba(255,184,77,0.12); } .term-amarillo .term-num{ color:#FFB84D; }
+  .term-cyan{ background:rgba(61,217,255,0.12); } .term-cyan .term-num{ color:var(--cyan); }
   .banner-impacto .bi-emoji{ font-size:1.2rem; }
   .banner-impacto b{ color:var(--lima-txt); }
 
@@ -381,7 +391,7 @@
         <button class="perfil-btn" id="perfil-inicial"><span id="perfil-letra">?</span><span class="racha-badge" id="racha-badge"></span></button>
       </div>
     </div>
-    <p class="tagline">Lo que pasa hoy en tu zona</p>
+    <p class="tagline">Reporta y descubre lo que pasa en tu ciudad</p>
     <button class="zona-btn" id="zona-btn" onclick="abrirSelectorZona('filtro')">
       <span>📍 <span id="zona-btn-texto">Toda Santa Marta</span></span>
       <span class="zona-btn-flecha">▾</span>
@@ -1559,30 +1569,43 @@ function renderBannerImpacto(){
   const cont = document.getElementById('banner-impacto-cont');
   if(!cont) return;
 
-  const haceUnaSemana = Date.now() - 7*24*60*60*1000;
   const enZona = f => zonaActiva === 'todas' || f.zona === zonaActiva;
-  const delaSemana = factos.filter(f => enZona(f) && new Date(f.created_at).getTime() >= haceUnaSemana);
+  const inicioHoy = new Date(); inicioHoy.setHours(0,0,0,0);
+  const esDeHoy = f => new Date(f.created_at).getTime() >= inicioHoy.getTime();
 
-  const total = delaSemana.length;
-  const resueltos = delaSemana.filter(f => f.resuelto).length;
+  const dela = factos.filter(enZona);
+  const deHoy = dela.filter(esDeHoy);
 
-  // Solo mostramos el banner cuando hay suficiente actividad para que sume,
-  // no cuando está casi vacío (ahí jugaría en contra).
-  if(total < 4){ cont.innerHTML = ''; return; }
+  // Activos = reportes sin resolver de hoy (lo que está pasando ahora)
+  const activos = deHoy.filter(f => !f.resuelto).length;
+  const resueltosHoy = deHoy.filter(f => f.resuelto).length;
+  // Desgloses por categoría, solo activos de hoy
+  const cortes = deHoy.filter(f => f.categoria === 'servicios' && !f.resuelto).length;
+  const vias = deHoy.filter(f => (f.categoria === 'vias' || f.categoria === 'transporte') && !f.resuelto).length;
 
-  const dondeTxt = zonaActiva === 'todas' ? 'Santa Marta' : escapeHTML(zonaActiva);
-  const resueltoTxt = resueltos > 0 ? ` y resolvió <b>${resueltos}</b>` : '';
-  cont.innerHTML = `<div class="banner-impacto">
-    <span class="bi-emoji">📊</span>
-    <span>Esta semana ${dondeTxt} reportó <b>${total}</b> facto${total===1?'':'s'}${resueltoTxt}.</span>
-  </div>`;
+  // Si el día está muy vacío, no mostramos el termómetro (jugaría en contra)
+  if(deHoy.length < 3){ cont.innerHTML = ''; return; }
+
+  const dondeTxt = zonaActiva === 'todas' ? 'tu ciudad' : escapeHTML(zonaActiva);
+
+  // Armamos solo las píldoras que tienen algo que mostrar
+  const pildoras = [];
+  pildoras.push(`<div class="term-item term-rojo"><span class="term-num">${activos}</span><span class="term-lbl">🔴 Activos</span></div>`);
+  if(resueltosHoy > 0) pildoras.push(`<div class="term-item term-verde"><span class="term-num">${resueltosHoy}</span><span class="term-lbl">🟢 Resueltos hoy</span></div>`);
+  if(cortes > 0) pildoras.push(`<div class="term-item term-amarillo"><span class="term-num">${cortes}</span><span class="term-lbl">⚡ Luz/Agua</span></div>`);
+  if(vias > 0) pildoras.push(`<div class="term-item term-cyan"><span class="term-num">${vias}</span><span class="term-lbl">🚧 Vías</span></div>`);
+
+  cont.innerHTML = `
+    <div class="termometro">
+      <div class="term-titulo">Hoy en ${dondeTxt}</div>
+      <div class="term-grid">${pildoras.join('')}</div>
+    </div>`;
 }
 
-// Pide a Cloudinary que entregue el video comprimido y en formato liviano,
-// para que cargue fluido en vez de entrecortado (calidad y formato automáticos)
+// Pide a Cloudinary que entregue el video más liviano conservando el audio.
 function optimizarVideo(url){
   if(!url || url.indexOf('/upload/') === -1) return url;
-  return url.replace('/upload/', '/upload/q_auto,f_auto,w_720,c_limit/');
+  return url.replace('/upload/', '/upload/q_auto,w_720,c_limit/');
 }
 
 function tarjetaFacto(f, idx){
