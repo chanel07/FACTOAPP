@@ -1009,6 +1009,8 @@ async function subirVideoACloudinary(file){
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  // Cloudinary procesa el video de forma asíncrona y nos devuelve la URL sin
+  // esperar a que termine de optimizar; la reproducción se sirve optimizada aparte
   const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`, { method:'POST', body: formData });
   const data = await res.json();
   if(!data.secure_url) throw new Error('No se pudo subir el video');
@@ -1478,6 +1480,13 @@ function renderBannerImpacto(){
   </div>`;
 }
 
+// Pide a Cloudinary que entregue el video comprimido y en formato liviano,
+// para que cargue fluido en vez de entrecortado (calidad y formato automáticos)
+function optimizarVideo(url){
+  if(!url || url.indexOf('/upload/') === -1) return url;
+  return url.replace('/upload/', '/upload/q_auto,f_auto,w_720,c_limit/');
+}
+
 function tarjetaFacto(f, idx){
   const yoConfirme = f.confirmaciones.some(c => c.telefono === miTelefono);
   const numReportes = reportesPorFacto[f.id] || 0;
@@ -1490,7 +1499,7 @@ function tarjetaFacto(f, idx){
     <div class="card ${f.resuelto ? 'resuelto' : ''} ${esDestacado ? 'destacado' : ''}" style="--tag-color:${colores[f.categoria]}; animation-delay:${idx*0.04}s">
       ${esDestacado ? `<div class="banner-destacado">🔗 Este es el facto que te compartieron</div>` : ''}      ${ocultoPorReportes ? `<div class="aviso-oculto">⚠️ Este facto fue reportado varias veces y solo tú lo ves ahora — el resto de la comunidad ya no lo ve en su feed.</div>` : ''}
       ${f.foto_url ? `<img src="${escapeHTML(f.foto_url)}" class="card-foto" onclick="window.open(this.src, '_blank')">` : ''}
-      ${f.video_url ? `<video src="${escapeHTML(f.video_url)}" class="card-video" controls playsinline preload="metadata"></video>` : ''}
+      ${f.video_url ? `<video src="${escapeHTML(optimizarVideo(f.video_url))}" class="card-video" controls playsinline preload="metadata"></video>` : ''}
       <div class="card-top">
         <span class="tag ${f.resuelto ? 'resuelto-tag' : f.categoria}">${f.resuelto ? '✅ Resuelto' : nombresCategoria[f.categoria]}</span>
         <span class="card-time">${activo ? '<span class="punto-activo"></span>' : ''}${haceCuanto(f.created_at)}</span>
