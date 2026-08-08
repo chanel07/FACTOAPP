@@ -542,17 +542,6 @@
           <button class="foto-quitar" id="video-quitar" onclick="quitarVideo()">Quitar</button>
         </div>
       </div>
-      <div class="field">
-        <label>Nota de voz (opcional, máx. 60 seg)</label>
-        <div class="nota-voz-fila">
-          <button type="button" class="nota-voz-btn" id="nota-voz-btn" onclick="toggleNotaVoz()">🎙️ Grabar nota de voz</button>
-          <span class="nota-voz-timer" id="nota-voz-timer"></span>
-        </div>
-        <div class="nota-voz-preview" id="nota-voz-preview" style="display:none;">
-          <audio id="nota-voz-audio" controls></audio>
-          <button class="foto-quitar" id="nota-voz-quitar" onclick="quitarNotaVoz()" style="display:inline-block;">Quitar</button>
-        </div>
-      </div>
       <div class="modal-actions">
         <button class="btn btn-cancelar" onclick="cerrarModal()">Cancelar</button>
         <button class="btn btn-publicar" id="btn-publicar" onclick="publicarReporte()">Tirar facto</button>
@@ -1460,12 +1449,11 @@ async function publicarReporte(){
   const texto = document.getElementById('rep-texto').value.trim();
   if(!categoriaSeleccionada){ showToast('Elige una categoría'); return; }
   if(!zona){ showToast('Elige en qué barrio ocurre'); return; }
-  // Se puede publicar con texto O con nota de voz (para quien prefiere no escribir)
-  if(!texto && !notaVozBlob){ showToast('Escribe, dicta o graba una nota de voz'); return; }
+  if(!texto){ showToast('Cuéntanos qué está pasando'); return; }
 
   const btn = document.getElementById('btn-publicar');
   btn.disabled = true;
-  btn.textContent = fotoSeleccionada ? 'Subiendo foto...' : (videoSeleccionado ? 'Subiendo video...' : (notaVozBlob ? 'Subiendo nota de voz...' : 'Publicando...'));
+  btn.textContent = fotoSeleccionada ? 'Subiendo foto...' : (videoSeleccionado ? 'Subiendo video...' : 'Publicando...');
 
   try{
     let fotoUrl = null;
@@ -1525,19 +1513,12 @@ async function publicarReporte(){
       btn.textContent = 'Publicando...';
     }
 
-    let audioUrl = null;
-    if(notaVozBlob){
-      btn.textContent = 'Subiendo nota de voz...';
-      audioUrl = await subirAudioACloudinary(notaVozBlob);
-    }
-
     const { error } = await sb.from('factos').insert({
       categoria: categoriaSeleccionada,
       zona,
       texto,
       foto_url: fotoUrl,
       video_url: videoUrl,
-      audio_url: audioUrl,
       lat: ubicacionCapturada ? ubicacionCapturada.lat : null,
       lng: ubicacionCapturada ? ubicacionCapturada.lng : null,
       autor: miNombre,
@@ -1560,6 +1541,18 @@ async function publicarReporte(){
       if(recien && recien.length){ nuevoFactoId = recien[0].id; }
     }catch(e){ console.log('No se pudo obtener el id del facto', e); }
 
+    // El facto que acabo de publicar salta al tope y queda resaltado un momento,
+    // para verlo al instante sin buscarlo entre todos.
+    if(nuevoFactoId){
+      factoDestacadoId = nuevoFactoId;
+      render();
+      setTimeout(() => {
+        const card = document.querySelector('.card.destacado');
+        if(card){ card.scrollIntoView({ behavior:'smooth', block:'center' }); }
+        setTimeout(() => { factoDestacadoId = null; render(); }, 5000);
+      }, 200);
+    }
+
     // Aviso push a la comunidad (no bloquea la publicación si falla)
     fetch('/api/notificar-facto', {
       method: 'POST',
@@ -1567,7 +1560,7 @@ async function publicarReporte(){
       body: JSON.stringify({
         categoria: nombresCategoria[categoriaSeleccionada] || categoriaSeleccionada,
         zona,
-        texto: texto || '🎙️ Nueva nota de voz en el barrio',
+        texto,
         facto_id: nuevoFactoId,
         autor_tel: miTelefono
       })
@@ -1805,9 +1798,8 @@ function tarjetaFacto(f, idx){
         <span class="card-time">${activo ? '<span class="punto-activo"></span>' : ''}${haceCuanto(f.created_at)}</span>
       </div>
       ${confirmado ? `<div style="margin-bottom:7px;"><span class="sello-confirmado">✓ Confirmado por el barrio</span></div>` : ''}
-      ${f.audio_url ? `<div class="card-audio"><span class="card-audio-icon">🎙️</span><audio controls src="${escapeHTML(f.audio_url)}"></audio></div>` : ''}
       <div class="card-zona">📍 ${escapeHTML(f.zona)}</div>
-      ${f.texto ? `<div class="card-texto">${escapeHTML(f.texto)}</div>` : (f.audio_url ? `<div class="card-texto" style="color:var(--text-soft); font-style:italic;">🎙️ Facto de voz</div>` : '')}
+      <div class="card-texto">${escapeHTML(f.texto)}</div>
       ${f.lat && f.lng ? `<a class="card-mapa" href="https://www.google.com/maps?q=${Number(f.lat)},${Number(f.lng)}" target="_blank">🗺️ Ver ubicación exacta en el mapa</a>` : ''}
       <div class="card-footer">
         <span class="card-autor-row"><span class="mini-avatar" style="background:${colorAvatar(f.autor)};">${escapeHTML(f.autor.charAt(0).toUpperCase())}</span>${escapeHTML(f.autor)}</span>
