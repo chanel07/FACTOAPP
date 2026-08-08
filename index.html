@@ -1513,10 +1513,7 @@ async function publicarReporte(){
       btn.textContent = 'Publicando...';
     }
 
-    // Insertamos y pedimos el id de vuelta. Si el select del id fallara por
-    // permisos, reintentamos con un insert simple para no bloquear la publicación.
-    let insertado = null, error = null;
-    ({ data: insertado, error } = await sb.from('factos').insert({
+    const { error } = await sb.from('factos').insert({
       categoria: categoriaSeleccionada,
       zona,
       texto,
@@ -1526,28 +1523,26 @@ async function publicarReporte(){
       lng: ubicacionCapturada ? ubicacionCapturada.lng : null,
       autor: miNombre,
       autor_tel: miTelefono
-    }).select('id'));
+    });
 
     if(error) throw error;
-
-    // ID del facto recién creado (del propio insert, más confiable)
-    let nuevoFactoId = (insertado && insertado.length) ? insertado[0].id : null;
 
     cerrarModal();
     await cargarFactos();
     showToast('¡Facto tirado! 🔥');
 
-    // Respaldo: si el insert no devolvió id, lo buscamos
-    if(!nuevoFactoId){
-      try{
-        let consulta = sb.from('factos').select('id').eq('autor_tel', miTelefono);
-        if(texto){ consulta = consulta.eq('texto', texto); }
-        const { data: recien } = await consulta.order('created_at', { ascending: false }).limit(1);
-        if(recien && recien.length){ nuevoFactoId = recien[0].id; }
-      }catch(e){ console.log('No se pudo obtener el id del facto', e); }
-    }
+    // Buscamos el ID del facto recién creado para que la push lleve directo a él.
+    // Es opcional: si falla, la publicación ya ocurrió y la push llevará al feed.
+    let nuevoFactoId = null;
+    try{
+      let consulta = sb.from('factos').select('id').eq('autor_tel', miTelefono);
+      if(texto){ consulta = consulta.eq('texto', texto); }
+      const { data: recien } = await consulta.order('created_at', { ascending: false }).limit(1);
+      if(recien && recien.length){ nuevoFactoId = recien[0].id; }
+    }catch(e){ console.log('No se pudo obtener el id del facto', e); }
 
-    // El facto que acabo de publicar salta al tope y queda resaltado un momento
+    // El facto que acabo de publicar salta al tope y queda resaltado un momento,
+    // para verlo al instante sin buscarlo entre todos.
     if(nuevoFactoId){
       factoDestacadoId = nuevoFactoId;
       render();
@@ -1555,7 +1550,7 @@ async function publicarReporte(){
         const card = document.querySelector('.card.destacado');
         if(card){ card.scrollIntoView({ behavior:'smooth', block:'center' }); }
         setTimeout(() => { factoDestacadoId = null; render(); }, 5000);
-      }, 250);
+      }, 200);
     }
 
     // Aviso push a la comunidad (no bloquea la publicación si falla)
