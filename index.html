@@ -323,6 +323,15 @@
   .video-preview{ width:56px; height:56px; border-radius:10px; object-fit:cover; display:none; background:#000; }
   .foto-quitar{ background:none; border:none; color:var(--coral); font-weight:800; font-size:0.75rem; cursor:pointer; display:none; }
   .ubicacion-btn{ width:100%; background:var(--card-alt); border:1.5px dashed var(--linea); border-radius:10px; padding:12px; color:var(--text-soft); font-weight:700; font-size:0.85rem; cursor:pointer; }
+  .nota-voz-fila{ display:flex; align-items:center; gap:10px; }
+  .nota-voz-btn{ flex:1; background:var(--card-alt); border:1.5px dashed var(--linea); border-radius:10px; padding:14px; color:var(--text-soft); font-weight:700; font-size:0.85rem; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif; }
+  .nota-voz-btn.grabando{ border-style:solid; border-color:var(--coral); color:var(--coral); background:rgba(255,61,113,0.1); animation:vozPulso 1.2s infinite; }
+  .nota-voz-timer{ font-weight:800; font-size:0.9rem; color:var(--coral); min-width:40px; text-align:center; }
+  .nota-voz-preview{ margin-top:10px; display:flex; align-items:center; gap:10px; }
+  .nota-voz-preview audio{ flex:1; height:38px; }
+  .card-audio{ display:flex; align-items:center; gap:8px; background:var(--card-alt); border-radius:12px; padding:10px 12px; margin-bottom:10px; }
+  .card-audio audio{ flex:1; height:38px; }
+  .card-audio-icon{ font-size:1.1rem; }
   .ubicacion-btn.capturada{ border-style:solid; border-color:var(--cyan); color:var(--cyan); }
   .card-mapa{ display:inline-flex; align-items:center; gap:4px; font-size:0.72rem; color:var(--cyan); text-decoration:none; font-weight:700; margin-top:6px; }
 
@@ -533,6 +542,17 @@
           <button class="foto-quitar" id="video-quitar" onclick="quitarVideo()">Quitar</button>
         </div>
       </div>
+      <div class="field">
+        <label>Nota de voz (opcional, máx. 60 seg)</label>
+        <div class="nota-voz-fila">
+          <button type="button" class="nota-voz-btn" id="nota-voz-btn" onclick="toggleNotaVoz()">🎙️ Grabar nota de voz</button>
+          <span class="nota-voz-timer" id="nota-voz-timer"></span>
+        </div>
+        <div class="nota-voz-preview" id="nota-voz-preview" style="display:none;">
+          <audio id="nota-voz-audio" controls></audio>
+          <button class="foto-quitar" id="nota-voz-quitar" onclick="quitarNotaVoz()" style="display:inline-block;">Quitar</button>
+        </div>
+      </div>
       <div class="modal-actions">
         <button class="btn btn-cancelar" onclick="cerrarModal()">Cancelar</button>
         <button class="btn btn-publicar" id="btn-publicar" onclick="publicarReporte()">Tirar facto</button>
@@ -680,6 +700,12 @@ let contactos = {};
 let fotoSeleccionada = null;
 let videoSeleccionado = null;
 const MAX_VIDEO_SEG = 20;
+let notaVozBlob = null;
+let notaVozGrabadora = null;
+let notaVozGrabando = false;
+let notaVozIntervalo = null;
+let notaVozInicio = 0;
+const MAX_NOTA_VOZ_SEG = 60;
 let factoAReenviar = null;
 let ubicacionCapturada = null;
 let factoDestacadoId = null;
@@ -1040,6 +1066,60 @@ function quitarVideo(){
   document.getElementById('video-quitar').style.display = 'none';
 }
 
+// ===== NOTA DE VOZ DEL FACTO =====
+async function toggleNotaVoz(){
+  if(notaVozGrabando){ notaVozGrabadora.stop(); return; }
+
+  // Nota de voz es exclusiva con foto y video (un facto lleva un solo medio)
+  if(fotoSeleccionada) quitarFoto();
+  if(videoSeleccionado) quitarVideo();
+
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+    notaVozGrabadora = new MediaRecorder(stream);
+    const trozos = [];
+    notaVozGrabadora.ondataavailable = e => { if(e.data.size) trozos.push(e.data); };
+    notaVozGrabadora.onstop = () => {
+      notaVozGrabando = false;
+      clearInterval(notaVozIntervalo);
+      stream.getTracks().forEach(t => t.stop());
+      const btn = document.getElementById('nota-voz-btn');
+      btn.classList.remove('grabando');
+      btn.textContent = '🎙️ Grabar nota de voz';
+      document.getElementById('nota-voz-timer').textContent = '';
+
+      const blob = new Blob(trozos, { type:'audio/webm' });
+      if(blob.size < 500){ showToast('Grabación muy corta'); return; }
+      notaVozBlob = blob;
+      const audio = document.getElementById('nota-voz-audio');
+      audio.src = URL.createObjectURL(blob);
+      document.getElementById('nota-voz-preview').style.display = 'flex';
+    };
+
+    notaVozGrabadora.start();
+    notaVozGrabando = true;
+    notaVozInicio = Date.now();
+    const btn = document.getElementById('nota-voz-btn');
+    btn.classList.add('grabando');
+    btn.textContent = '⏹️ Detener y guardar';
+    notaVozIntervalo = setInterval(() => {
+      const seg = Math.floor((Date.now() - notaVozInicio)/1000);
+      const m = Math.floor(seg/60), s = seg%60;
+      document.getElementById('nota-voz-timer').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+      if(seg >= MAX_NOTA_VOZ_SEG){ notaVozGrabadora.stop(); }
+    }, 500);
+  }catch(e){
+    showToast('No se pudo acceder al micrófono');
+  }
+}
+
+function quitarNotaVoz(){
+  notaVozBlob = null;
+  const audio = document.getElementById('nota-voz-audio');
+  audio.src = '';
+  document.getElementById('nota-voz-preview').style.display = 'none';
+}
+
 // Intenta comprimir el video en el propio teléfono antes de subirlo, para que
 // pese menos y suba más rápido. Si algo falla o el navegador no lo soporta,
 // devuelve el archivo original (nunca bloquea la publicación).
@@ -1271,6 +1351,7 @@ async function abrirModal(){
   categoriaSeleccionada = null;
   quitarFoto();
   quitarVideo();
+  quitarNotaVoz();
   ubicacionCapturada = null;
   zonaPublicarSeleccionada = null;
   document.getElementById('rep-zona-texto').textContent = 'Selecciona el barrio';
@@ -1283,8 +1364,10 @@ function cerrarModal(){
   document.getElementById('modal-reporte').classList.remove('open');
   document.getElementById('rep-texto').value = '';
   if(dictando) detenerDictado();
+  if(notaVozGrabando){ try{ notaVozGrabadora.stop(); }catch(e){} }
   quitarFoto();
   quitarVideo();
+  quitarNotaVoz();
 }
 
 const ejemplosPorCategoria = {
@@ -1377,11 +1460,12 @@ async function publicarReporte(){
   const texto = document.getElementById('rep-texto').value.trim();
   if(!categoriaSeleccionada){ showToast('Elige una categoría'); return; }
   if(!zona){ showToast('Elige en qué barrio ocurre'); return; }
-  if(!texto){ showToast('Cuéntanos qué está pasando'); return; }
+  // Se puede publicar con texto O con nota de voz (para quien prefiere no escribir)
+  if(!texto && !notaVozBlob){ showToast('Escribe, dicta o graba una nota de voz'); return; }
 
   const btn = document.getElementById('btn-publicar');
   btn.disabled = true;
-  btn.textContent = fotoSeleccionada ? 'Subiendo foto...' : (videoSeleccionado ? 'Subiendo video...' : 'Publicando...');
+  btn.textContent = fotoSeleccionada ? 'Subiendo foto...' : (videoSeleccionado ? 'Subiendo video...' : (notaVozBlob ? 'Subiendo nota de voz...' : 'Publicando...'));
 
   try{
     let fotoUrl = null;
@@ -1441,12 +1525,19 @@ async function publicarReporte(){
       btn.textContent = 'Publicando...';
     }
 
+    let audioUrl = null;
+    if(notaVozBlob){
+      btn.textContent = 'Subiendo nota de voz...';
+      audioUrl = await subirAudioACloudinary(notaVozBlob);
+    }
+
     const { error } = await sb.from('factos').insert({
       categoria: categoriaSeleccionada,
       zona,
       texto,
       foto_url: fotoUrl,
       video_url: videoUrl,
+      audio_url: audioUrl,
       lat: ubicacionCapturada ? ubicacionCapturada.lat : null,
       lng: ubicacionCapturada ? ubicacionCapturada.lng : null,
       autor: miNombre,
@@ -1463,12 +1554,9 @@ async function publicarReporte(){
     // Es opcional: si falla, la publicación ya ocurrió y la push llevará al feed.
     let nuevoFactoId = null;
     try{
-      const { data: recien } = await sb.from('factos')
-        .select('id')
-        .eq('autor_tel', miTelefono)
-        .eq('texto', texto)
-        .order('created_at', { ascending: false })
-        .limit(1);
+      let consulta = sb.from('factos').select('id').eq('autor_tel', miTelefono);
+      if(texto){ consulta = consulta.eq('texto', texto); }
+      const { data: recien } = await consulta.order('created_at', { ascending: false }).limit(1);
       if(recien && recien.length){ nuevoFactoId = recien[0].id; }
     }catch(e){ console.log('No se pudo obtener el id del facto', e); }
 
@@ -1479,7 +1567,7 @@ async function publicarReporte(){
       body: JSON.stringify({
         categoria: nombresCategoria[categoriaSeleccionada] || categoriaSeleccionada,
         zona,
-        texto,
+        texto: texto || '🎙️ Nueva nota de voz en el barrio',
         facto_id: nuevoFactoId,
         autor_tel: miTelefono
       })
@@ -1717,8 +1805,9 @@ function tarjetaFacto(f, idx){
         <span class="card-time">${activo ? '<span class="punto-activo"></span>' : ''}${haceCuanto(f.created_at)}</span>
       </div>
       ${confirmado ? `<div style="margin-bottom:7px;"><span class="sello-confirmado">✓ Confirmado por el barrio</span></div>` : ''}
+      ${f.audio_url ? `<div class="card-audio"><span class="card-audio-icon">🎙️</span><audio controls src="${escapeHTML(f.audio_url)}"></audio></div>` : ''}
       <div class="card-zona">📍 ${escapeHTML(f.zona)}</div>
-      <div class="card-texto">${escapeHTML(f.texto)}</div>
+      ${f.texto ? `<div class="card-texto">${escapeHTML(f.texto)}</div>` : (f.audio_url ? `<div class="card-texto" style="color:var(--text-soft); font-style:italic;">🎙️ Facto de voz</div>` : '')}
       ${f.lat && f.lng ? `<a class="card-mapa" href="https://www.google.com/maps?q=${Number(f.lat)},${Number(f.lng)}" target="_blank">🗺️ Ver ubicación exacta en el mapa</a>` : ''}
       <div class="card-footer">
         <span class="card-autor-row"><span class="mini-avatar" style="background:${colorAvatar(f.autor)};">${escapeHTML(f.autor.charAt(0).toUpperCase())}</span>${escapeHTML(f.autor)}</span>
