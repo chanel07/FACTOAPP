@@ -153,6 +153,16 @@
   .term-verde{ background:rgba(46,204,113,0.12); } .term-verde .term-num{ color:#2ecc71; }
   .term-amarillo{ background:rgba(255,184,77,0.12); } .term-amarillo .term-num{ color:#FFB84D; }
   .term-cyan{ background:rgba(61,217,255,0.12); } .term-cyan .term-num{ color:var(--cyan); }
+  .resumen-semanal{ margin:0 20px 12px; border:1px solid var(--linea); border-radius:14px; overflow:hidden; background:rgba(46,204,113,0.06); }
+  .rs-cabecera{ width:100%; display:flex; align-items:center; justify-content:space-between; background:none; border:none; padding:13px 16px; font-size:0.88rem; font-weight:800; color:#2ecc71; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif; }
+  .rs-flecha{ transition:transform 0.2s; font-size:0.8rem; }
+  .rs-flecha.abierta{ transform:rotate(180deg); }
+  .rs-cuerpo{ max-height:0; overflow:hidden; transition:max-height 0.3s ease; }
+  .rs-cuerpo.abierto{ max-height:300px; }
+  .rs-fila{ display:flex; align-items:center; gap:10px; padding:9px 16px; font-size:0.88rem; color:var(--text); border-top:1px solid var(--linea); }
+  .rs-fila.rs-destacado{ background:rgba(46,204,113,0.1); }
+  .rs-emoji{ font-size:1.1rem; }
+  .rs-txt b{ color:var(--text); }
   .banner-impacto .bi-emoji{ font-size:1.2rem; }
   .banner-impacto b{ color:var(--lima-txt); }
 
@@ -178,6 +188,12 @@
   .filtro-resueltos label{ font-size:0.76rem; color:var(--text-soft); font-weight:700; display:flex; align-items:center; gap:6px; }
   .card-foto{ width:100%; border-radius:10px; margin-bottom:10px; max-height:420px; object-fit:contain; background:var(--card-alt); cursor:pointer; }
   .card-video{ width:100%; border-radius:10px; margin-bottom:4px; max-height:420px; background:#000; }
+  .antes-despues{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:10px; }
+  .ad-col{ position:relative; }
+  .ad-col img{ width:100%; height:130px; object-fit:cover; border-radius:10px; cursor:pointer; }
+  .ad-lbl{ position:absolute; top:6px; left:6px; font-size:0.62rem; font-weight:800; padding:3px 7px; border-radius:8px; color:#fff; }
+  .ad-antes{ background:rgba(255,61,113,0.85); }
+  .ad-despues{ background:rgba(46,204,113,0.9); }
   .aviso-video-audio{ font-size:0.76rem; color:var(--text-soft); background:var(--card-alt); border-radius:8px; padding:8px 10px; margin-top:6px; line-height:1.4; }
   .video-sin-audio{ display:inline-flex; align-items:center; gap:4px; font-size:0.7rem; color:var(--text-soft); font-weight:700; margin-bottom:10px; }
   .card-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px; }
@@ -437,6 +453,7 @@
       <label><input type="checkbox" id="ocultar-resueltos" onchange="render()"> Ocultar resueltos</label>
     </div>
     <div id="banner-impacto-cont"></div>
+    <div id="resumen-semanal-cont"></div>
     <div class="feed" id="feed">
       <div class="skeleton-card"></div>
       <div class="skeleton-card"></div>
@@ -628,6 +645,21 @@
       <div id="opciones-lista" class="opciones-lista"></div>
       <div class="modal-actions">
         <button class="btn btn-cancelar" onclick="cerrarMasOpciones()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-resuelto">
+    <div class="modal">
+      <h2>✅ ¡Marcar como resuelto!</h2>
+      <p style="color:var(--text-soft); font-size:0.88rem; margin:-8px 0 16px;">¿Quieres mostrar cómo quedó? Sube una foto del "después" para que el barrio vea que se solucionó. 💪</p>
+      <label class="foto-btn" id="foto-despues-btn" style="display:block; margin-bottom:12px;">📸 Agregar foto del después
+        <input type="file" id="foto-despues-input" accept="image/*" style="display:none;" onchange="previsualizarFotoDespues()">
+      </label>
+      <img id="foto-despues-preview" style="display:none; width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:12px;">
+      <div class="modal-actions">
+        <button class="btn btn-cancelar" onclick="confirmarResuelto(false)">Sin foto</button>
+        <button class="btn btn-publicar" id="btn-resuelto-ok" onclick="confirmarResuelto(true)">Marcar resuelto</button>
       </div>
     </div>
   </div>
@@ -1778,6 +1810,52 @@ function renderBannerImpacto(){
       <div class="term-titulo">Hoy en ${dondeTxt}</div>
       <div class="term-grid">${pildoras.join('')}</div>
     </div>`;
+
+  renderResumenSemanal();
+}
+
+// MEJORA #6: "Lo que mejoró esta semana" — muestra que Facto no es solo quejas,
+// también soluciones. Usa los factos resueltos de los últimos 7 días.
+let resumenSemanalAbierto = false;
+function renderResumenSemanal(){
+  const cont = document.getElementById('resumen-semanal-cont');
+  if(!cont) return;
+
+  const enZona = f => zonaActiva === 'todas' || f.zona === zonaActiva;
+  const haceUnaSemana = Date.now() - 7*24*60*60*1000;
+  const semana = factos.filter(f => enZona(f) && new Date(f.created_at).getTime() >= haceUnaSemana);
+
+  const resueltos = semana.filter(f => f.resuelto).length;
+  const viales = semana.filter(f => f.categoria === 'vias' || f.categoria === 'transporte').length;
+  const luz = semana.filter(f => f.categoria === 'servicios').length;
+  const peligro = semana.filter(f => f.categoria === 'peligro').length;
+
+  // Solo mostramos el resumen si hubo actividad y al menos algo resuelto
+  if(semana.length < 4 || resueltos === 0){ cont.innerHTML = ''; return; }
+
+  const dondeTxt = zonaActiva === 'todas' ? 'Santa Marta' : escapeHTML(zonaActiva);
+
+  const filas = [];
+  filas.push(`<div class="rs-fila rs-destacado"><span class="rs-emoji">✅</span><span class="rs-txt"><b>${resueltos}</b> problema${resueltos===1?'':'s'} solucionado${resueltos===1?'':'s'}</span></div>`);
+  if(viales > 0) filas.push(`<div class="rs-fila"><span class="rs-emoji">🚧</span><span class="rs-txt"><b>${viales}</b> reporte${viales===1?'':'s'} de vías</span></div>`);
+  if(luz > 0) filas.push(`<div class="rs-fila"><span class="rs-emoji">💡</span><span class="rs-txt"><b>${luz}</b> de luz o agua</span></div>`);
+  if(peligro > 0) filas.push(`<div class="rs-fila"><span class="rs-emoji">🚨</span><span class="rs-txt"><b>${peligro}</b> de seguridad</span></div>`);
+
+  cont.innerHTML = `
+    <div class="resumen-semanal">
+      <button class="rs-cabecera" onclick="toggleResumenSemanal()">
+        <span>🟢 ${dondeTxt} esta semana</span>
+        <span class="rs-flecha ${resumenSemanalAbierto ? 'abierta' : ''}">▾</span>
+      </button>
+      <div class="rs-cuerpo ${resumenSemanalAbierto ? 'abierto' : ''}">
+        ${filas.join('')}
+      </div>
+    </div>`;
+}
+
+function toggleResumenSemanal(){
+  resumenSemanalAbierto = !resumenSemanalAbierto;
+  renderResumenSemanal();
 }
 
 // Pide a Cloudinary que entregue el video más liviano conservando el audio.
@@ -1797,7 +1875,11 @@ function tarjetaFacto(f, idx){
   return `
     <div class="card ${f.resuelto ? 'resuelto' : ''} ${esDestacado ? 'destacado' : ''}" style="--tag-color:${colores[f.categoria]}; animation-delay:${idx*0.04}s">
       ${esDestacado ? `<div class="banner-destacado">🔗 Este es el facto que te compartieron</div>` : ''}      ${ocultoPorReportes ? `<div class="aviso-oculto">⚠️ Este facto fue reportado varias veces y solo tú lo ves ahora — el resto de la comunidad ya no lo ve en su feed.</div>` : ''}
-      ${f.foto_url ? `<img src="${escapeHTML(f.foto_url)}" class="card-foto" onclick="window.open(this.src, '_blank')">` : ''}
+      ${(f.resuelto && f.foto_despues && f.foto_url) ? `
+        <div class="antes-despues">
+          <div class="ad-col"><span class="ad-lbl ad-antes">🔴 ANTES</span><img src="${escapeHTML(f.foto_url)}" onclick="window.open(this.src,'_blank')"></div>
+          <div class="ad-col"><span class="ad-lbl ad-despues">🟢 DESPUÉS</span><img src="${escapeHTML(f.foto_despues)}" onclick="window.open(this.src,'_blank')"></div>
+        </div>` : (f.foto_url ? `<img src="${escapeHTML(f.foto_url)}" class="card-foto" onclick="window.open(this.src, '_blank')">` : '')}
       ${f.video_url ? `<video src="${escapeHTML(optimizarVideo(f.video_url))}" class="card-video" controls playsinline preload="metadata"></video><div class="video-sin-audio">🔇 Video sin audio (comprimido para cargar rápido)</div>` : ''}
       <div class="card-top">
         <span class="tag ${f.resuelto ? 'resuelto-tag' : f.categoria}">${f.resuelto ? '✅ Resuelto' : nombresCategoria[f.categoria]}</span>
@@ -1844,9 +1926,67 @@ function cerrarMasOpciones(){
 }
 
 async function marcarResuelto(id, estabaResuelto){
-  await sb.from('factos').update({ resuelto: !estabaResuelto }).eq('id', id);
+  // Si lo está marcando como resuelto, ofrecemos subir una foto del "después"
+  if(!estabaResuelto){
+    factoResolviendo = id;
+    document.getElementById('modal-resuelto').classList.add('open');
+    empujarEstadoNavegacion();
+    return;
+  }
+  await sb.from('factos').update({ resuelto: false, foto_despues: null }).eq('id', id);
   await cargarFactos();
-  showToast(estabaResuelto ? 'Marcado como activo de nuevo' : '¡Marcado como resuelto! ✅');
+  showToast('Marcado como activo de nuevo');
+}
+
+let factoResolviendo = null;
+let fotoDespuesSel = null;
+
+async function confirmarResuelto(conFoto){
+  const id = factoResolviendo;
+  if(!id) return;
+  const btn = document.getElementById('btn-resuelto-ok');
+  btn.disabled = true;
+
+  let fotoDespuesUrl = null;
+  try{
+    if(conFoto && fotoDespuesSel){
+      btn.textContent = 'Subiendo foto...';
+      fotoDespuesUrl = await subirFotoACloudinary(fotoDespuesSel);
+    }
+    await sb.from('factos').update({ resuelto: true, foto_despues: fotoDespuesUrl }).eq('id', id);
+    await cargarFactos();
+    showToast('¡Marcado como resuelto! ✅');
+  }catch(e){
+    console.error(e);
+    // Aunque falle la foto, marcamos resuelto igual
+    await sb.from('factos').update({ resuelto: true }).eq('id', id);
+    await cargarFactos();
+    showToast('Marcado como resuelto (sin foto)');
+  }finally{
+    cerrarModalResuelto();
+    btn.disabled = false;
+    btn.textContent = 'Marcar resuelto';
+  }
+}
+
+function cerrarModalResuelto(){
+  document.getElementById('modal-resuelto').classList.remove('open');
+  factoResolviendo = null;
+  fotoDespuesSel = null;
+  const prev = document.getElementById('foto-despues-preview');
+  if(prev){ prev.style.display = 'none'; prev.src = ''; }
+  const inp = document.getElementById('foto-despues-input');
+  if(inp) inp.value = '';
+}
+
+function previsualizarFotoDespues(){
+  const input = document.getElementById('foto-despues-input');
+  const file = input.files[0];
+  if(!file) return;
+  fotoDespuesSel = file;
+  const prev = document.getElementById('foto-despues-preview');
+  prev.src = URL.createObjectURL(file);
+  prev.style.display = 'block';
 }
 
 async function reportarFacto(id){
@@ -2290,6 +2430,7 @@ window.addEventListener('popstate', function(){
   const modalesEnOrden = [
     { id:'modal-registro', cerrar: cancelarRegistro },
     { id:'modal-mas-opciones', cerrar: cerrarMasOpciones },
+    { id:'modal-resuelto', cerrar: cerrarModalResuelto },
     { id:'modal-zona', cerrar: cerrarSelectorZona },
     { id:'modal-reenviar', cerrar: cerrarReenviar },
     { id:'modal-dm', cerrar: cerrarDM },
