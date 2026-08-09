@@ -140,6 +140,7 @@
   .nota-otros-barrios{ background:var(--card); border-left:4px solid var(--lima-txt); border-radius:14px; padding:14px 16px; margin-bottom:14px; font-size:0.9rem; line-height:1.5; color:var(--text-soft); }
   .nota-otros-barrios strong{ color:var(--text); }
   .sello-confirmado{ display:inline-flex; align-items:center; gap:4px; background:rgba(198,255,61,0.16); color:var(--lima-txt); font-size:0.66rem; font-weight:800; padding:4px 9px; border-radius:12px; text-transform:uppercase; letter-spacing:0.02em; }
+  .sello-inteligente{ font-size:0.72rem; color:var(--text-soft); font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:3px; }
   .punto-activo{ display:inline-block; width:7px; height:7px; border-radius:50%; background:#2ecc71; margin-right:4px; animation:latido 1.6s ease-in-out infinite; vertical-align:middle; }
   @keyframes latido{ 0%,100%{ box-shadow:0 0 0 0 rgba(46,204,113,0.6); } 50%{ box-shadow:0 0 0 5px rgba(46,204,113,0); } }
   .banner-impacto{ background:linear-gradient(135deg, rgba(198,255,61,0.12), rgba(61,217,255,0.10)); border:1px solid var(--linea); border-radius:14px; padding:12px 16px; margin:0 20px 4px; display:flex; align-items:center; gap:10px; font-size:0.84rem; font-weight:700; color:var(--text); }
@@ -1711,6 +1712,25 @@ function render(){
   }
   lista.sort((a,b) => puntaje(b) - puntaje(a));
 
+  // Marcamos los primeros factos como "destacados por el orden inteligente" y
+  // guardamos el motivo, para explicarlo con un sello (transparencia sin números).
+  const ahoraMs = Date.now();
+  lista.forEach((f, i) => {
+    f._motivoDestacado = null;
+    if(f.resuelto || i > 2) return; // solo los 3 primeros, no resueltos
+    const horas = (ahoraMs - new Date(f.created_at).getTime()) / 3600000;
+    const catUrgente = (f.categoria === 'peligro' || f.categoria === 'servicios');
+    if((f.confirmaciones.length || 0) >= 2){
+      f._motivoDestacado = 'Subió por las confirmaciones del barrio';
+    }else if(catUrgente && horas < 6){
+      f._motivoDestacado = 'Reciente y de una categoría urgente';
+    }else if(horas < 2){
+      f._motivoDestacado = 'Recién reportado';
+    }else if(catUrgente){
+      f._motivoDestacado = 'Categoría prioritaria para el barrio';
+    }
+  });
+
   // Si se abrió la app desde un link de facto compartido, ese va de primero
   if(factoDestacadoId){
     const idx = lista.findIndex(f => f.id === factoDestacadoId);
@@ -1886,6 +1906,7 @@ function tarjetaFacto(f, idx){
         <span class="card-time">${activo ? '<span class="punto-activo"></span>' : ''}${haceCuanto(f.created_at)}</span>
       </div>
       ${confirmado ? `<div style="margin-bottom:7px;"><span class="sello-confirmado">✓ Confirmado por el barrio</span></div>` : ''}
+      ${f._motivoDestacado ? `<div class="sello-inteligente">⬆️ ${escapeHTML(f._motivoDestacado)}</div>` : ''}
       <div class="card-zona">📍 ${escapeHTML(f.zona)}</div>
       <div class="card-texto">${escapeHTML(f.texto)}</div>
       ${f.lat && f.lng ? `<a class="card-mapa" href="https://www.google.com/maps?q=${Number(f.lat)},${Number(f.lng)}" target="_blank">🗺️ Ver ubicación exacta en el mapa</a>` : ''}
