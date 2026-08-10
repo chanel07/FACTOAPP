@@ -36,6 +36,20 @@
   }
   *{box-sizing:border-box;}
 
+  .onboarding{ position:fixed; inset:0; background:var(--bg); z-index:9998; display:none; flex-direction:column; align-items:center; justify-content:center; padding:32px 24px; }
+  .onboarding.visible{ display:flex; }
+  .onb-tarjetas{ position:relative; width:100%; max-width:340px; flex:1; display:flex; align-items:center; justify-content:center; }
+  .onb-tarjeta{ position:absolute; width:100%; text-align:center; opacity:0; transform:translateX(40px) scale(0.96); transition:opacity 0.4s ease, transform 0.4s ease; pointer-events:none; }
+  .onb-tarjeta.activa{ opacity:1; transform:translateX(0) scale(1); pointer-events:auto; }
+  .onb-tarjeta.saliente{ opacity:0; transform:translateX(-40px) scale(0.96); }
+  .onb-icono{ font-size:4rem; margin-bottom:20px; display:inline-block; animation:onbPop 0.5s ease-out; }
+  @keyframes onbPop{ 0%{ transform:scale(0.3); opacity:0; } 60%{ transform:scale(1.15); } 100%{ transform:scale(1); opacity:1; } }
+  .onb-tarjeta h2{ font-family:'Baloo 2', sans-serif; font-size:1.5rem; color:var(--text); margin:0 0 12px; }
+  .onb-tarjeta p{ color:var(--text-soft); font-size:0.98rem; line-height:1.5; margin:0; }
+  .onb-puntos{ display:flex; gap:8px; margin:24px 0; }
+  .onb-punto{ width:8px; height:8px; border-radius:50%; background:var(--linea); transition:all 0.3s; }
+  .onb-punto.activo{ background:var(--lima-txt); width:24px; border-radius:4px; }
+  .onb-btn{ width:100%; max-width:340px; padding:15px; border-radius:14px; border:none; background:var(--lima); color:#0c0e12; font-weight:800; font-size:1rem; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif; }
   #splash-screen{
     position:fixed;
     inset:0;
@@ -145,6 +159,13 @@
   @keyframes latido{ 0%,100%{ box-shadow:0 0 0 0 rgba(46,204,113,0.6); } 50%{ box-shadow:0 0 0 5px rgba(46,204,113,0); } }
   .banner-impacto{ background:linear-gradient(135deg, rgba(198,255,61,0.12), rgba(61,217,255,0.10)); border:1px solid var(--linea); border-radius:14px; padding:12px 16px; margin:0 20px 4px; display:flex; align-items:center; gap:10px; font-size:0.84rem; font-weight:700; color:var(--text); }
   .termometro{ margin:0 20px 10px; }
+  .clima{ margin:12px 20px 4px; background:linear-gradient(135deg, rgba(61,217,255,0.14), rgba(198,255,61,0.08)); border:1px solid var(--linea); border-radius:14px; padding:12px 16px; display:flex; align-items:center; gap:12px; }
+  .clima-icono{ font-size:1.8rem; animation:climaFlota 3s ease-in-out infinite; }
+  @keyframes climaFlota{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-4px); } }
+  .clima-info{ flex:1; }
+  .clima-temp{ font-size:1.1rem; font-weight:800; color:var(--text); font-family:'Baloo 2', sans-serif; }
+  .clima-desc{ font-size:0.78rem; color:var(--text-soft); font-weight:600; }
+  .clima-extra{ font-size:0.74rem; color:var(--text-soft); text-align:right; }
   .term-titulo{ font-size:0.72rem; font-weight:800; color:var(--text-soft); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:8px; }
   .term-grid{ display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; }
   .term-item{ border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; gap:2px; border:1px solid var(--linea); }
@@ -269,6 +290,8 @@
   .punto-nuevo{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--coral); }
 
   .fab{ position:fixed; right:20px; bottom:88px; width:58px; height:58px; border-radius:50%; background:var(--lima); color:#14161C; border:none; font-size:1.9rem; font-weight:700; box-shadow:0 4px 16px rgba(198,255,61,0.35); cursor:pointer; z-index:9; }
+  .fab-invita{ animation:fabInvita 0.8s ease-in-out 3; }
+  @keyframes fabInvita{ 0%,100%{ transform:scale(1); box-shadow:0 4px 16px rgba(198,255,61,0.35); } 50%{ transform:scale(1.15); box-shadow:0 0 0 12px rgba(198,255,61,0); } }
   .fab:active{ transform:scale(0.92); }
 
   .tooltip-fab{
@@ -424,6 +447,32 @@
     </div>
   </div>
 
+  <div id="onboarding" class="onboarding">
+    <div class="onb-tarjetas" id="onb-tarjetas">
+      <div class="onb-tarjeta activa" data-paso="0">
+        <div class="onb-icono">🔥</div>
+        <h2>Reporta lo que pasa</h2>
+        <p>Cortes de luz y agua, peligro, vías dañadas, mascotas perdidas... cuéntale al barrio lo que ves.</p>
+      </div>
+      <div class="onb-tarjeta" data-paso="1">
+        <div class="onb-icono">✋</div>
+        <h2>El barrio confirma</h2>
+        <p>Los vecinos confirman lo que es cierto. Así sabes qué pasó de verdad, sin rumores.</p>
+      </div>
+      <div class="onb-tarjeta" data-paso="2">
+        <div class="onb-icono">🔔</div>
+        <h2>Entérate al instante</h2>
+        <p>Te llega la alerta cuando pasa algo en tu zona. Y cada mañana, el parte del barrio.</p>
+      </div>
+    </div>
+    <div class="onb-puntos">
+      <span class="onb-punto activo" data-p="0"></span>
+      <span class="onb-punto" data-p="1"></span>
+      <span class="onb-punto" data-p="2"></span>
+    </div>
+    <button class="onb-btn" id="onb-btn" onclick="avanzarOnboarding()">Siguiente</button>
+  </div>
+
   <header>
     <div class="logo-row">
       <h1 class="logo">TÍRAME UN <span>FACTO</span></h1>
@@ -453,6 +502,7 @@
     <div class="filtro-resueltos">
       <label><input type="checkbox" id="ocultar-resueltos" onchange="render()"> Ocultar resueltos</label>
     </div>
+    <div id="clima-cont"></div>
     <div id="banner-impacto-cont"></div>
     <div id="resumen-semanal-cont"></div>
     <div class="feed" id="feed">
@@ -1336,6 +1386,98 @@ function filtrarCategoria(cat){
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('activo'));
   document.querySelector(`.chip[data-cat="${cat}"]`).classList.add('activo');
   render();
+}
+
+let onbPasoActual = 0;
+
+// Clima de Santa Marta con Open-Meteo (gratis, sin API key). Si falla, no se muestra.
+async function cargarClima(){
+  const cont = document.getElementById('clima-cont');
+  if(!cont) return;
+  try{
+    // Coordenadas de Santa Marta
+    const lat = 11.24, lon = -74.20;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,precipitation_probability_max&timezone=America/Bogota&forecast_days=1`;
+    const res = await fetch(url);
+    if(!res.ok) return;
+    const d = await res.json();
+
+    const temp = Math.round(d.current.temperature_2m);
+    const code = d.current.weather_code;
+    const probLluvia = d.daily.precipitation_probability_max ? d.daily.precipitation_probability_max[0] : null;
+
+    const info = climaDescripcion(code);
+    let extra = '';
+    if(probLluvia !== null && probLluvia >= 40){
+      extra = `🌧️ ${probLluvia}% de lluvia hoy`;
+    }else if(probLluvia !== null){
+      extra = `☂️ ${probLluvia}% de lluvia`;
+    }
+
+    cont.innerHTML = `
+      <div class="clima">
+        <span class="clima-icono">${info.emoji}</span>
+        <div class="clima-info">
+          <div class="clima-temp">${temp}° · Santa Marta</div>
+          <div class="clima-desc">${info.texto}</div>
+        </div>
+        ${extra ? `<div class="clima-extra">${extra}</div>` : ''}
+      </div>`;
+  }catch(e){
+    // Si el clima falla, simplemente no aparece (no rompe la app)
+    console.log('Clima no disponible', e);
+  }
+}
+
+function climaDescripcion(code){
+  // Códigos WMO de Open-Meteo simplificados
+  if(code === 0) return { emoji:'☀️', texto:'Despejado' };
+  if(code <= 2) return { emoji:'🌤️', texto:'Parcialmente nublado' };
+  if(code === 3) return { emoji:'☁️', texto:'Nublado' };
+  if(code <= 48) return { emoji:'🌫️', texto:'Neblina' };
+  if(code <= 67) return { emoji:'🌧️', texto:'Lluvioso' };
+  if(code <= 77) return { emoji:'🌨️', texto:'Chubascos' };
+  if(code <= 82) return { emoji:'🌧️', texto:'Aguaceros' };
+  if(code <= 99) return { emoji:'⛈️', texto:'Tormenta' };
+  return { emoji:'🌡️', texto:'—' };
+}
+
+function mostrarOnboardingSiEsNuevo(){
+  if(localStorage.getItem('facto_onboarding_visto')) return;
+  document.getElementById('onboarding').classList.add('visible');
+}
+
+function avanzarOnboarding(){
+  const tarjetas = document.querySelectorAll('.onb-tarjeta');
+  const puntos = document.querySelectorAll('.onb-punto');
+  const btn = document.getElementById('onb-btn');
+
+  if(onbPasoActual >= tarjetas.length - 1){
+    // Última tarjeta: cerramos el onboarding
+    document.getElementById('onboarding').classList.remove('visible');
+    localStorage.setItem('facto_onboarding_visto', '1');
+    // Animación estratégica: el botón + pulsa para invitar a reportar
+    setTimeout(() => {
+      const fab = document.querySelector('.fab');
+      if(fab){ fab.classList.add('fab-invita'); setTimeout(() => fab.classList.remove('fab-invita'), 2400); }
+    }, 400);
+    return;
+  }
+
+  tarjetas[onbPasoActual].classList.remove('activa');
+  tarjetas[onbPasoActual].classList.add('saliente');
+  puntos[onbPasoActual].classList.remove('activo');
+
+  onbPasoActual++;
+
+  tarjetas[onbPasoActual].classList.remove('saliente');
+  tarjetas[onbPasoActual].classList.add('activa');
+  puntos[onbPasoActual].classList.add('activo');
+  // Re-disparamos la animación del ícono
+  const icono = tarjetas[onbPasoActual].querySelector('.onb-icono');
+  if(icono){ icono.style.animation = 'none'; void icono.offsetWidth; icono.style.animation = ''; }
+
+  if(onbPasoActual === tarjetas.length - 1){ btn.textContent = 'Empezar'; }
 }
 
 function mostrarTooltipsNavegacion(){
@@ -2509,6 +2651,7 @@ async function iniciar(){
   }
   actualizarRacha();
   inicializarVoz();
+  cargarClima();
   mostrarTooltipInicial();
   mostrarTooltipsNavegacion();
 
@@ -2540,6 +2683,7 @@ async function iniciar(){
   const espera = Math.max(0, 900 - tiempoTranscurrido);
   setTimeout(() => {
     document.getElementById('splash-screen').classList.add('oculto');
+    mostrarOnboardingSiEsNuevo();
     // Si venimos de un link compartido, llevamos la vista al facto destacado
     if(factoDestacadoId){
       const card = document.querySelector('.card.destacado');
