@@ -155,6 +155,11 @@
   .nota-otros-barrios strong{ color:var(--text); }
   .sello-confirmado{ display:inline-flex; align-items:center; gap:4px; background:rgba(198,255,61,0.16); color:var(--lima-txt); font-size:0.66rem; font-weight:800; padding:4px 9px; border-radius:12px; text-transform:uppercase; letter-spacing:0.02em; }
   .sello-inteligente{ font-size:0.72rem; color:var(--text-soft); font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:3px; }
+  .viendo-ahora{ display:inline-flex; align-items:center; font-size:0.74rem; font-weight:800; color:var(--coral); background:rgba(255,61,113,0.1); padding:4px 9px; border-radius:10px; margin-bottom:8px; animation:viendoPulso 1.8s ease-in-out infinite; }
+  @keyframes viendoPulso{ 0%,100%{ opacity:1; } 50%{ opacity:0.6; } }
+  .veo-ahora-btn{ width:100%; margin:6px 0 2px; padding:9px; border-radius:10px; border:1.5px solid var(--linea); background:var(--card-alt); color:var(--text-soft); font-weight:700; font-size:0.8rem; cursor:pointer; font-family:'Plus Jakarta Sans', sans-serif; transition:transform 0.1s; }
+  .veo-ahora-btn:active{ transform:scale(0.97); }
+  .veo-ahora-btn.activo{ border-color:var(--coral); color:var(--coral); background:rgba(255,61,113,0.08); }
   .punto-activo{ display:inline-block; width:7px; height:7px; border-radius:50%; background:#2ecc71; margin-right:4px; animation:latido 1.6s ease-in-out infinite; vertical-align:middle; }
   @keyframes latido{ 0%,100%{ box-shadow:0 0 0 0 rgba(46,204,113,0.6); } 50%{ box-shadow:0 0 0 5px rgba(46,204,113,0); } }
   .banner-impacto{ background:linear-gradient(135deg, rgba(198,255,61,0.12), rgba(61,217,255,0.10)); border:1px solid var(--linea); border-radius:14px; padding:12px 16px; margin:0 20px 4px; display:flex; align-items:center; gap:10px; font-size:0.84rem; font-weight:700; color:var(--text); }
@@ -199,12 +204,14 @@
 
   .card{ background:var(--card); border-radius:16px; padding:16px 16px 14px; animation:cardIn 0.3s ease-out backwards; border-left:4px solid var(--tag-color, var(--lima-txt)); }
   .card.resuelto{ opacity:0.5; filter:grayscale(0.7); }
+  .card.ya-no-ocurre{ opacity:0.7; }
   .card.destacado{ animation:cardIn 0.3s ease-out backwards, brilloDestacado 2.4s ease-out; box-shadow:0 0 0 2px var(--lima), 0 6px 20px rgba(198,255,61,0.25); }
   @keyframes brilloDestacado{ 0%{ box-shadow:0 0 0 3px var(--lima), 0 0 24px rgba(198,255,61,0.6); } 100%{ box-shadow:0 0 0 2px var(--lima), 0 6px 20px rgba(198,255,61,0.25); } }
   .banner-destacado{ background:rgba(198,255,61,0.14); color:var(--lima-txt); font-size:0.78rem; font-weight:800; padding:9px 12px; border-radius:10px; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
   .aviso-oculto{ background:rgba(255,61,113,0.15); color:var(--coral); font-size:0.78rem; font-weight:700; padding:10px 12px; border-radius:10px; margin-bottom:10px; }
   @keyframes cardIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
   .tag.resuelto-tag{ background:rgba(139,143,163,0.2); color:var(--text-soft); }
+  .tag.yanoocurre-tag{ background:rgba(61,217,255,0.18); color:var(--cyan); }
   .reportar-btn{ border:none; background:transparent; color:var(--text-soft); font-size:0.85rem; cursor:pointer; padding:6px; opacity:0.6; }
   .filtro-resueltos{ padding:0 20px 8px; display:flex; justify-content:flex-end; }
   .filtro-resueltos label{ font-size:0.76rem; color:var(--text-soft); font-weight:700; display:flex; align-items:center; gap:6px; }
@@ -1294,6 +1301,7 @@ async function subirFotoACloudinary(file){
 const UMBRAL_REPORTES = 3;
 const UMBRAL_CONFIRMADO = 3; // confirmaciones para el sello "Confirmado por el barrio"
 let reportesPorFacto = {};
+let viendoAhoraPorFacto = {};
 
 async function cargarFactos(){
   const { data, error } = await sb
@@ -1308,6 +1316,19 @@ async function cargarFactos(){
   (reportes || []).forEach(r => {
     reportesPorFacto[r.objetivo_id] = (reportesPorFacto[r.objetivo_id] || 0) + 1;
   });
+
+  // "Lo estoy viendo ahora" — vistas de los últimos 15 minutos
+  viendoAhoraPorFacto = {};
+  try{
+    const hace15 = new Date(Date.now() - 15*60*1000).toISOString();
+    const { data: viendo } = await sb.from('viendo_ahora')
+      .select('facto_id, telefono, created_at')
+      .gte('created_at', hace15);
+    (viendo || []).forEach(v => {
+      if(!viendoAhoraPorFacto[v.facto_id]) viendoAhoraPorFacto[v.facto_id] = new Set();
+      viendoAhoraPorFacto[v.facto_id].add(v.telefono);
+    });
+  }catch(e){ /* si la tabla no existe aún, se ignora */ }
 
   render();
 }
@@ -1769,6 +1790,29 @@ async function confirmar(id){
   await cargarFactos();
 }
 
+// "Lo estoy viendo ahora" — registra que el usuario está presenciando el facto
+// en este momento. Vale por 15 minutos y luego caduca solo.
+// "Ya no está ocurriendo": distinto de resuelto. La situación cesó (la vía se
+// despejó, paró el aguacero) pero nadie la "solucionó". Cualquiera puede marcarlo.
+async function marcarYaNoOcurre(id, estaba){
+  if(!(await asegurarIdentidad())) return;
+  await sb.from('factos').update({ ya_no_ocurre: !estaba }).eq('id', id);
+  await cargarFactos();
+  showToast(estaba ? 'Marcado como activo de nuevo' : '🧹 Marcado: ya no está ocurriendo');
+}
+
+async function verAhora(id){
+  if(!(await asegurarIdentidad())) return;
+  try{
+    // upsert: si ya marcó hace poco, actualiza la hora; si no, lo crea
+    await sb.from('viendo_ahora').insert({ facto_id: id, telefono: miTelefono });
+    showToast('👀 Marcaste que lo estás viendo ahora');
+    await cargarFactos();
+  }catch(e){
+    console.log('No se pudo registrar', e);
+  }
+}
+
 function abrirChat(id){
   chatAbiertoId = id;
   const facto = factos.find(f => f.id === id);
@@ -1846,6 +1890,7 @@ function render(){
   const pesoCategoria = { peligro:100, servicios:70, vias:55, transporte:50, mascotas:40, eventos:35, parche:30 };
   function puntaje(f){
     if(f.resuelto) return -1000 + (new Date(f.created_at).getTime()/1e10); // resueltos al fondo
+    if(f.ya_no_ocurre) return -800 + (new Date(f.created_at).getTime()/1e10); // ya no ocurre, también al fondo
     const horas = (ahora - new Date(f.created_at).getTime()) / 3600000;
     const frescura = Math.max(0, 60 - horas);          // pierde fuerza con las horas
     const cat = pesoCategoria[f.categoria] || 30;
@@ -2034,8 +2079,11 @@ function tarjetaFacto(f, idx){
   const confirmado = f.confirmaciones.length >= UMBRAL_CONFIRMADO && !f.resuelto;
   const minutosDesde = Math.floor((Date.now() - new Date(f.created_at)) / 60000);
   const activo = minutosDesde < 60 && !f.resuelto;
+  const viendoSet = viendoAhoraPorFacto[f.id];
+  const numViendo = viendoSet ? viendoSet.size : 0;
+  const yoVeoAhora = viendoSet ? viendoSet.has(miTelefono) : false;
   return `
-    <div class="card ${f.resuelto ? 'resuelto' : ''} ${esDestacado ? 'destacado' : ''}" style="--tag-color:${colores[f.categoria]}; animation-delay:${idx*0.04}s">
+    <div class="card ${f.resuelto ? 'resuelto' : ''} ${f.ya_no_ocurre && !f.resuelto ? 'ya-no-ocurre' : ''} ${esDestacado ? 'destacado' : ''}" style="--tag-color:${colores[f.categoria]}; animation-delay:${idx*0.04}s">
       ${esDestacado ? `<div class="banner-destacado">🔗 Este es el facto que te compartieron</div>` : ''}      ${ocultoPorReportes ? `<div class="aviso-oculto">⚠️ Este facto fue reportado varias veces y solo tú lo ves ahora — el resto de la comunidad ya no lo ve en su feed.</div>` : ''}
       ${(f.resuelto && f.foto_despues && f.foto_url) ? `
         <div class="antes-despues">
@@ -2044,14 +2092,16 @@ function tarjetaFacto(f, idx){
         </div>` : (f.foto_url ? `<img src="${escapeHTML(f.foto_url)}" class="card-foto" onclick="window.open(this.src, '_blank')">` : '')}
       ${f.video_url ? `<video src="${escapeHTML(optimizarVideo(f.video_url))}" class="card-video" controls playsinline preload="metadata"></video><div class="video-sin-audio">🔇 Video sin audio (comprimido para cargar rápido)</div>` : ''}
       <div class="card-top">
-        <span class="tag ${f.resuelto ? 'resuelto-tag' : f.categoria}">${f.resuelto ? '✅ Resuelto' : nombresCategoria[f.categoria]}</span>
+        <span class="tag ${f.resuelto ? 'resuelto-tag' : (f.ya_no_ocurre ? 'yanoocurre-tag' : f.categoria)}">${f.resuelto ? '✅ Resuelto' : (f.ya_no_ocurre ? '🧹 Ya no ocurre' : nombresCategoria[f.categoria])}</span>
         <span class="card-time">${activo ? '<span class="punto-activo"></span>' : ''}${haceCuanto(f.created_at)}</span>
       </div>
       ${confirmado ? `<div style="margin-bottom:7px;"><span class="sello-confirmado">✓ Confirmado por el barrio</span></div>` : ''}
+      ${numViendo > 0 && !f.resuelto ? `<div class="viendo-ahora">🔴 ${numViendo} ${numViendo === 1 ? 'persona lo está viendo' : 'personas lo están viendo'} ahora</div>` : ''}
       ${f._motivoDestacado ? `<div class="sello-inteligente">⬆️ ${escapeHTML(f._motivoDestacado)}</div>` : ''}
       <div class="card-zona">📍 ${escapeHTML(f.zona)}</div>
       <div class="card-texto">${escapeHTML(f.texto)}</div>
       ${f.lat && f.lng ? `<a class="card-mapa" href="https://www.google.com/maps?q=${Number(f.lat)},${Number(f.lng)}" target="_blank">🗺️ Ver ubicación exacta en el mapa</a>` : ''}
+      ${!f.resuelto ? `<button class="veo-ahora-btn ${yoVeoAhora ? 'activo' : ''}" onclick="verAhora('${attrJs(f.id)}')">${yoVeoAhora ? '👀 Lo estás viendo ahora' : '👀 Lo estoy viendo ahora'}</button>` : ''}
       <div class="card-footer">
         <span class="card-autor-row"><span class="mini-avatar" style="background:${colorAvatar(f.autor)};">${escapeHTML(f.autor.charAt(0).toUpperCase())}</span>${escapeHTML(f.autor)}</span>
       </div>
@@ -2075,6 +2125,10 @@ function abrirMasOpciones(id){
     botones += `<button class="opcion-item" onclick="cerrarMasOpciones(); abrirDMDesdeCard('${attrJs(facto.autor_tel)}', '${attrJs(facto.autor)}')">✉️ Escribirle en privado</button>`;
   }
   botones += `<button class="opcion-item" onclick="cerrarMasOpciones(); abrirReenviar('${attrJs(facto.id)}')">↗️ Reenviar a un contacto</button>`;
+  // "Ya no está ocurriendo" puede marcarlo cualquiera (el autor puede haberse ido)
+  if(!facto.resuelto){
+    botones += `<button class="opcion-item" onclick="cerrarMasOpciones(); marcarYaNoOcurre('${attrJs(facto.id)}', ${facto.ya_no_ocurre ? 'true' : 'false'})">${facto.ya_no_ocurre ? '↩️ Volver a marcar como activo' : '🧹 Ya no está ocurriendo'}</button>`;
+  }
   if(esMio){
     botones += `<button class="opcion-item" onclick="cerrarMasOpciones(); marcarResuelto('${attrJs(facto.id)}', ${facto.resuelto ? 'true' : 'false'})">${facto.resuelto ? '↩️ Marcar como activo' : '✅ Marcar como resuelto'}</button>`;
   }
